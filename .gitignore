@@ -3,3 +3,6 @@
 .DS_Store
 .vscode
 /storage
+logs/
+   combined.log
+   errors.log

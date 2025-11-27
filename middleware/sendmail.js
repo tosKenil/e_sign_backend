@@ -33,8 +33,8 @@ var transport = nodemailer.createTransport({
     port: 587,
     secure: false,
     auth: {
-        user: "theoceanstudios2020@gmail.com",
-        pass: 'mvuc iivy knry vuea'
+        user: process.env.MailUsername,
+        pass: process.env.MailPassword
     },
     tls: {
         rejectUnauthorized: false
@@ -46,7 +46,7 @@ const sendMail = function (to, subject, body) {
     const safeTo = process.env.NODE_ENV === "production" ? to : "kenil.dev@theoceanstudios.in";
 
     let message = {
-        from: 'theoceanstudios2020@gmail.com',
+        from: process.env.MailUsername,
         to: to,
         subject: subject,
         html: body,

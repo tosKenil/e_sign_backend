@@ -37,6 +37,10 @@ const ORIGINALS_DIR = path.join(STORAGE_DIR, "originals");
 const PDF_DIR = path.join(STORAGE_DIR, "pdf");
 const SIGNED_DIR = path.join(STORAGE_DIR, "signed");
 
+app.get("/", (req, res) => {
+    res.json({ message: `Welcome to e_sign api.` });
+});
+
 (async () => {
     await fsp.mkdir(ORIGINALS_DIR, { recursive: true });
     await fsp.mkdir(PDF_DIR, { recursive: true });
