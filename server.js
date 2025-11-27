@@ -24,7 +24,7 @@ app.use(cors())
 
 // -------------------- ENV CONFIG --------------------
 const PORT = process.env.PORT || 4013;
-const BASE_URL = process.env.BASE_URL || `https://e-sign-backend.vercel.app`;
+const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
 // const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 // const API_KEY = process.env.API_KEY;
 // const expireTime = { expiresIn: "5m" };
@@ -52,8 +52,8 @@ if (process.env.ACCESS_API_KEY == true || process.env.ACCESS_API_KEY === "true")
     app.use("/api", verifyApiKey);
 }
 
-const loggerMiddleware = require('./middleware/loggerMiddleware');
-app.use(loggerMiddleware);
+// const loggerMiddleware = require('./middleware/loggerMiddleware');
+// app.use(loggerMiddleware);
 
 app.use('/api', require('./route/eSignRoutes'));
 require('./config/db');
