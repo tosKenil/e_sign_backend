@@ -24,7 +24,7 @@ app.use(cors())
 
 // -------------------- ENV CONFIG --------------------
 const PORT = process.env.PORT || 4013;
-const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
+const BASE_URL = process.env.BASE_URL || `https://e-sign-backend.vercel.app`;
 // const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 // const API_KEY = process.env.API_KEY;
 // const expireTime = { expiresIn: "5m" };
