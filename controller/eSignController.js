@@ -14,6 +14,8 @@ const { generatePdfDocumentFromTemplate, buildFullPdfHtml } = require("../middle
 const { default: puppeteer } = require("puppeteer");
 const { PDFDocument } = require('pdf-lib');
 
+console.log(path.join(__dirname, "../", "storage", "/originals"))
+console.log(path.join(path.join(__dirname, "../", "storage", "/pdf")))
 
 function generateId() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -232,7 +234,7 @@ eSignController.generate_template = async (req, res) => {
         // --------------------- PREPARE DIRECTORIES ------------------------
         // HTML originals dir (already in your code)
         // Create a /pdf folder next to it if not exists
-        const PDF_DIR = path.join(ORIGINALS_DIR, "..", "pdf");
+        const PDF_DIR = path.join(path.join(__dirname, "../", "storage", "/pdf"));
         await fsp.mkdir(PDF_DIR, { recursive: true });
 
         // --------------------- SAVE HTML + GENERATE INDIVIDUAL PDF BUFFERS ---------------
