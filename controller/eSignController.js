@@ -8,9 +8,9 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET, BASE_URL } = process.env;
 
 const fsp = require("fs/promises");
-const ORIGINALS_DIR = path.join(__dirname, "../storage/originals");
+const ORIGINALS_DIRECTORY = path.join(__dirname, "../storage/originals");
 const PDF_DIRECTORY = path.join(__dirname, "../storage/pdf");
-// const SIGNED_DIR = path.join("storage", "/signed");
+const SIGNED_DIRECTORY = path.join(__dirname, "../storage/signed");
 const { generatePdfDocumentFromTemplate, buildFullPdfHtml } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
 const { PDFDocument } = require('pdf-lib');
@@ -234,8 +234,8 @@ eSignController.generate_template = async (req, res) => {
         // --------------------- PREPARE DIRECTORIES ------------------------
         // HTML originals dir (already in your code)
         // Create a /pdf folder next to it if not exists
-        const PDF_DIR = path.join(path.join(PDF_DIRECTORY));
-        await fsp.mkdir(PDF_DIR, { recursive: true });
+        // const PDF_DIR = path.join(PDF_DIRECTORY);
+        // await fsp.mkdir(PDF_DIR, { recursive: true });
 
         // --------------------- SAVE HTML + GENERATE INDIVIDUAL PDF BUFFERS ---------------
         const files = [];        // HTML metadata for DB
@@ -263,7 +263,7 @@ eSignController.generate_template = async (req, res) => {
 
                 const baseName = `${Date.now()}-${generateId()}-template-${i + 1}`;
                 const htmlFileName = `${baseName}.html`;
-                const htmlFilePath = path.join(ORIGINALS_DIR, htmlFileName);
+                const htmlFilePath = path.join(ORIGINALS_DIRECTORY, htmlFileName);
 
                 // Save EXACT HTML to disk (no modifications, no placeholder replacement)
                 await fsp.writeFile(htmlFilePath, rawHtml, "utf-8");
@@ -326,7 +326,7 @@ eSignController.generate_template = async (req, res) => {
         // Save merged PDF to /pdf folder
         const mergedBaseName = `${Date.now()}-${generateId()}-merged`;
         const mergedPdfFileName = `${mergedBaseName}.pdf`;
-        const mergedPdfFilePath = path.join(PDF_DIR, mergedPdfFileName);
+        const mergedPdfFilePath = path.join(PDF_DIRECTORY, mergedPdfFileName);
 
         await fsp.writeFile(mergedPdfFilePath, mergedPdfBytes);
 
@@ -592,12 +592,9 @@ eSignController.completeEnvelope = async (req, res) => {
             // landscape: true, // enable if you need landscape
         });
 
-        // 7. Save PDF buffer to disk (e.g. /storage/signed)
-        const signedDir = path.join(__dirname, "..", "storage", "signed");
-        await fs.promises.mkdir(signedDir, { recursive: true });
 
         const outputName = `envelope-${env._id}-${Date.now()}.pdf`;
-        const outputPath = path.join(signedDir, outputName);
+        const outputPath = path.join(SIGNED_DIRECTORY, outputName);
 
         await fs.promises.writeFile(outputPath, pdfBuffer);
 
