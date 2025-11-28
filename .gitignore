@@ -2,7 +2,7 @@
 .env
 .DS_Store
 .vscode
-/storage
+# /storage
 logs/
    combined.log
    errors.log
