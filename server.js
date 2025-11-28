@@ -12,7 +12,7 @@ const ejs = require("ejs");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
-app.use('/storage', express.static(path.join(__dirname, 'storage')));
+app.use('/storage', express.static('storage'));
 // app.use(
 //     cors({
 //         origin: ['*'],
@@ -45,22 +45,21 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
 //     await fsp.mkdir(SIGNED_DIR, { recursive: true });
 // })();
 
-const IS_PROD =
-    process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+// const IS_PROD =
+//     process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 
-const STORAGE_DIR = IS_PROD ? "/tmp/storage" : path.join(__dirname, "storage");
-const ORIGINALS_DIR = path.join(STORAGE_DIR, "originals");
-const PDF_DIR = path.join(STORAGE_DIR, "pdf");
-const SIGNED_DIR = path.join(STORAGE_DIR, "signed");
-
+const STORAGE_DIR = path.join("storage");
+const ORIGINALS_DIR = path.join("./storage/originals");
+const PDF_DIR = path.join("./storage/pdf");
+const SIGNED_DIR = path.join("./storage/signed");
 
 
 async function prepareStorage() {
     try {
-        await fsp.mkdir(STORAGE_DIR, { recursive: true });
-        await fsp.mkdir(ORIGINALS_DIR, { recursive: true });
-        await fsp.mkdir(PDF_DIR, { recursive: true });
-        await fsp.mkdir(SIGNED_DIR, { recursive: true });
+        await fs.mkdirSync(STORAGE_DIR, { recursive: true });
+        await fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
+        await fs.mkdirSync(PDF_DIR, { recursive: true });
+        await fs.mkdirSync(SIGNED_DIR, { recursive: true });
         console.log("✔ Storage folders created:", STORAGE_DIR);
     } catch (err) {
         console.error("❌ Failed to create storage folders:", err);
