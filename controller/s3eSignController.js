@@ -5,6 +5,9 @@ const Envelope = require("../model/eSignModel");
 const jwt = require("jsonwebtoken");
 const { generatePdfDocumentFromTemplate, buildFullPdfHtml } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
+const chromium = require("@sparticuz/chromium");
+const puppeteer_core = require("puppeteer-core");
+
 const { PDFDocument } = require("pdf-lib");
 
 // 👇 ADD THIS: your AWS/Spaces helper (adjust path if needed)
@@ -72,7 +75,18 @@ eSignController.generate_template = async (req, res) => {
 
         // IMPORTANT: we do NOT change your HTML/CSS.
         // We use templates EXACTLY as received.
-        const browser = await puppeteer.launch({ args: ["--no-sandbox"] });
+        let browser;
+        if (process.env.NODE_ENV === "development") {
+            browser = await puppeteer.launch({ args: ["--no-sandbox"] });
+        } else {
+            browser = await puppeteer_core.launch({
+                args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+            });
+        }
+
 
         try {
             for (let i = 0; i < templates.length; i++) {
@@ -430,7 +444,17 @@ eSignController.completeEnvelope = async (req, res) => {
         const fullHtml = buildFullPdfHtml(htmlParts);
 
         // 6. Generate PDF from HTML using Puppeteer
-        browser = await puppeteer.launch({ args: ["--no-sandbox"] });
+        if (process.env.NODE_ENV === "development") {
+            browser = await puppeteer.launch({ args: ["--no-sandbox"] });
+        } else {
+            browser = await puppeteer_core.launch({
+                args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+            });
+        }
+
         const page = await browser.newPage();
 
         await page.setContent(fullHtml, {

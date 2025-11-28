@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@sparticuz/chromium": "^141.0.0",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
@@ -27,6 +28,7 @@
     "nodemon": "^3.1.11",
     "pdf-lib": "^1.17.1",
     "puppeteer": "^24.31.0",
+    "puppeteer-core": "^24.31.0",
     "winston": "^3.18.3"
   }
 }

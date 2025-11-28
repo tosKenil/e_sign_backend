@@ -3,7 +3,8 @@ const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET;
 const fs = require("fs");
 const puppeteer = require("puppeteer");
-
+const chromium = require("@sparticuz/chromium");
+const puppeteer_core = require("puppeteer-core");
 
 
 
@@ -62,7 +63,19 @@ helpers.generatePdfDocumentFromTemplate = async ({
 
     // If you want to generate a real PDF when landscape === true
     if (landscape === true) {
-        const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+        let browser;
+        if (process.env.NODE_ENV === "development") {
+
+            browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+        } else {
+            browser = await puppeteer_core.launch({
+                args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+            });
+        }
+
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0' });
 
