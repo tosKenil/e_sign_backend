@@ -53,9 +53,7 @@ const ORIGINALS_DIR = path.join(STORAGE_DIR, "originals");
 const PDF_DIR = path.join(STORAGE_DIR, "pdf");
 const SIGNED_DIR = path.join(STORAGE_DIR, "signed");
 
-if (!IS_PROD) {
-    app.use('/storage', express.static(path.join(__dirname, "storage")));
-}
+
 
 async function prepareStorage() {
     try {
