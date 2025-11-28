@@ -1,188 +1,25 @@
 const eSignController = {};
 const sendMail = require("../services/sendmail.js");
-const { SIGN_EVENTS } = require("../config/contance.js");
+const { SIGN_EVENTS, DIRECTORIES, ESIGN_PATHS } = require("../config/contance.js");
 const Envelope = require("../model/eSignModel");
-const path = require("path");
-const fs = require("fs");
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET, BASE_URL } = process.env;
-
-const fsp = require("fs/promises");
-const ORIGINALS_DIRECTORY = path.join(__dirname, "../storage/originals");
-const PDF_DIRECTORY = path.join(__dirname, "../storage/pdf");
-const SIGNED_DIRECTORY = path.join(__dirname, "../storage/signed");
 const { generatePdfDocumentFromTemplate, buildFullPdfHtml } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
-const { PDFDocument } = require('pdf-lib');
+const { PDFDocument } = require("pdf-lib");
+
+// 👇 ADD THIS: your AWS/Spaces helper (adjust path if needed)
+const AwsFileUpload = require("../services/s3Upload"); // <-- change path as per your project
+
+const { JWT_SECRET, BASE_URL, SPACES_PUBLIC_URL } = process.env;
 
 function generateId() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// eSignController.generate_template = async (req, res) => {
-//     console.log("🚀 ~ POST /api/generate-template (multi-html, multi-user)");
+const ESIGN_ORIGINALS_PATH = ESIGN_PATHS.ESIGN_ORIGINALS_PATH;
+const ESIGN_PDF_PATH = ESIGN_PATHS.ESIGN_PDF_PATH;
+const ESIGN_SIGNED_PATH = ESIGN_PATHS.ESIGN_SIGNED_PATH;
 
-//     try {
-//         // ❌ templateData removed from here
-//         const { htmlTemplates, userData } = req.body;
-
-//         // --------------------- VALIDATE htmlTemplates ----------------------
-//         let templates = [];
-//         try {
-//             templates = Array.isArray(htmlTemplates)
-//                 ? htmlTemplates
-//                 : JSON.parse(htmlTemplates);
-//         } catch {
-//             return res.status(400).json({ error: "htmlTemplates must be a valid array" });
-//         }
-
-//         if (!templates.length) {
-//             return res.status(400).json({ error: "At least one HTML template required" });
-//         }
-
-//         // --------------------- VALIDATE userData --------------------------
-//         let users = [];
-//         try {
-//             users = Array.isArray(userData) ? userData : JSON.parse(userData);
-//         } catch {
-//             return res.status(400).json({ error: "userData must be a valid array" });
-//         }
-
-//         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//         users = users
-//             .map((u) => ({
-//                 name: u.name?.trim(),
-//                 email: u.email?.trim()?.toLowerCase(),
-//             }))
-//             .filter((u) => u.email && emailRegex.test(u.email));
-
-//         if (!users.length) {
-//             return res.status(400).json({ error: "Invalid userData format" });
-//         }
-
-//         // --------------------- SAVE ALL HTML FILES ------------------------
-//         const files = [];
-
-//         for (let i = 0; i < templates.length; i++) {
-//             const rawHtml = templates[i];
-//             const fileName = `${Date.now()}-${generateId()}-template-${i + 1}.html`;
-//             const filePath = path.join(ORIGINALS_DIR, fileName);
-
-//             // Save original HTML to disk (for static serving / debugging)
-//             await fsp.writeFile(filePath, rawHtml, 'utf-8');
-
-//             // Since template data is already injected in htmlTemplates,
-//             // we can just pass an empty object here
-//             const { file: htmlBuffer } = await generatePdfDocumentFromTemplate({
-//                 templatePath: filePath,
-//                 outputName: fileName,
-//                 data: {}, // 👈 no templateData from user
-//             });
-
-
-//             const finalHtml = htmlBuffer.toString('utf-8');
-
-//             // Persist file + final HTML in DB
-//             files.push({
-//                 filename: fileName,
-//                 storedName: fileName,
-//                 publicUrl: fileName,
-//                 // publicUrl: `${BASE_URL}/storage/originals/${fileName}`,
-//                 mimetype: "text/html",
-//                 html: finalHtml, // processed HTML (currently same as rawHtml)
-//             });
-//         }
-
-//         // --------------------- CREATE SIGNERS -----------------------------
-//         const now = new Date();
-//         const signers = users.map((u) => ({
-//             email: u.email,
-//             name: u.name,
-//             status: SIGN_EVENTS.SENT,
-//             sentAt: now,
-//             signedUrl: "",
-//             tokenUrl: "",
-//         }));
-
-//         // --------------------- CREATE ENVELOPE ----------------------------
-//         let env = await Envelope.create({
-//             signers,
-//             files,
-//             documentStatus: SIGN_EVENTS.SENT,
-//             pdf: "",
-//             signedPdf: "",
-//             signedUrl: "",
-//             tokenUrl: "",
-//         });
-
-//         // --------------------- GENERATE SIGN URL PER SIGNER ----------------
-//         const signerResults = [];
-//         for (let i = 0; i < env.signers.length; i++) {
-//             const s = env.signers[i];
-//             const token = jwt.sign(
-//                 { envId: String(env._id), email: s.email, i },
-//                 JWT_SECRET
-//             );
-
-//             // const signUrl = `${BASE_URL}/api/envelopes/by-token/${token}`;
-//             const signUrl = `https://tsp-secure-sign.vercel.app/documents?token=${token}`;
-//             env.signers[i].tokenUrl = signUrl;
-
-//             signerResults.push({
-//                 email: s.email,
-//                 name: s.name,
-//                 tokenUrl: signUrl,
-//             });
-//         }
-
-//         // Save env
-//         env.tokenUrl = signerResults[0]?.tokenUrl;
-//         await env.save();
-
-//         // --------------------- SEND EMAILS --------------------------------
-//         await Promise.all(
-//             signerResults.map(async ({ email, name, tokenUrl }) => {
-//                 console.log("🚀 ~ signedUrl:", tokenUrl)
-//                 const subject = "Your document is ready for signature";
-//                 const bodyHtml = `
-//           <html>
-//           <body>
-//               <p>Hello ${name},</p>
-//               <p>Your documents are ready to sign:</p>
-//               <p><a href="${tokenUrl}" target="_blank">Sign Now</a></p>
-//           </body>
-//           </html>
-//         `;
-//                 await sendMail(email, subject, bodyHtml);
-//             })
-//         );
-
-//         let resFiles = files.map(f => ({
-//             filename: f.filename,
-//             publicUrl: `${BASE_URL}/storage/originals/${f.publicUrl}`,
-//             mimetype: f.mimetype,
-//             html: f.html,
-//         }));
-
-//         // --------------------- RESPONSE -----------------------------------
-//         return res.json({
-//             status: true,
-//             message: "Templates processed and emails sent",
-//             envelopeId: String(env._id),
-//             envelopeSignUrl: env.signedUrl,
-//             signers: env.signers,
-//             resFiles,
-//             templatesHtml: files.map((f, index) => ({
-//                 index,
-//                 filename: f.filename,
-//                 html: f.html,
-//             })),
-//         });
-//     } catch (e) {
-//         console.error(e);
-//         return res.status(500).json({ error: "Generation failed" });
-//     }
-// };
 eSignController.generate_template = async (req, res) => {
     console.log("🚀 ~ POST /api/generate-template (multi-html, multi-user, single PDF)");
 
@@ -229,12 +66,6 @@ eSignController.generate_template = async (req, res) => {
             return res.status(400).json({ error: "Invalid userData format" });
         }
 
-        // --------------------- PREPARE DIRECTORIES ------------------------
-        // HTML originals dir (already in your code)
-        // Create a /pdf folder next to it if not exists
-        // const PDF_DIR = path.join(PDF_DIRECTORY);
-        // await fsp.mkdir(PDF_DIR, { recursive: true });
-
         // --------------------- SAVE HTML + GENERATE INDIVIDUAL PDF BUFFERS ---------------
         const files = [];        // HTML metadata for DB
         const pdfBuffers = [];   // PDF buffers to merge later
@@ -247,8 +78,7 @@ eSignController.generate_template = async (req, res) => {
             for (let i = 0; i < templates.length; i++) {
                 const templateItem = templates[i];
 
-                // Your current payload is an array of pure HTML strings
-                // But let's also support an object { html: "<...>" } in future:
+                // htmlTemplates can be either pure strings or { html: "<...>" }
                 const rawHtml =
                     typeof templateItem === "string"
                         ? templateItem
@@ -261,15 +91,24 @@ eSignController.generate_template = async (req, res) => {
 
                 const baseName = `${Date.now()}-${generateId()}-template-${i + 1}`;
                 const htmlFileName = `${baseName}.html`;
-                const htmlFilePath = path.join(ORIGINALS_DIRECTORY, htmlFileName);
 
-                // Save EXACT HTML to disk (no modifications, no placeholder replacement)
-                await fsp.writeFile(htmlFilePath, rawHtml, "utf-8");
+                // -------------------------
+                // 1) UPLOAD HTML TO SPACES
+                // -------------------------
+                const htmlKey = htmlFileName; // esign/originals/xxx.html
 
-                // Render this HTML with Puppeteer and create a PDF buffer
+                await AwsFileUpload.uploadToSpaces({
+                    fileData: Buffer.from(rawHtml, "utf-8"),
+                    filename: htmlFileName,
+                    filepath: ESIGN_ORIGINALS_PATH,
+                    mimetype: "text/html",
+                });
+
+                // -------------------------
+                // 2) RENDER THIS HTML TO PDF PAGE (BUFFER)
+                // -------------------------
                 const page = await browser.newPage();
 
-                // Set a viewport if you want to more closely match browser
                 await page.setViewport({ width: 1024, height: 768 });
 
                 await page.setContent(rawHtml, {
@@ -291,13 +130,15 @@ eSignController.generate_template = async (req, res) => {
 
                 pdfBuffers.push(pdfBuffer);
 
-                // Store HTML metadata (for Envelope.files)
+                // -------------------------
+                // 3) STORE HTML METADATA FOR ENVELOPE
+                // -------------------------
                 files.push({
                     filename: htmlFileName,
                     storedName: htmlFileName,
-                    publicUrl: htmlFileName,
+                    publicUrl: htmlKey, // KEY inside Spaces (no base URL here)
                     mimetype: "text/html",
-                    html: rawHtml, // unchanged HTML
+                    html: rawHtml,      // unchanged HTML
                 });
             }
         } finally {
@@ -321,15 +162,20 @@ eSignController.generate_template = async (req, res) => {
 
         const mergedPdfBytes = await mergedPdf.save();
 
-        // Save merged PDF to /pdf folder
+        // --------------------- UPLOAD MERGED PDF TO SPACES -----------------
         const mergedBaseName = `${Date.now()}-${generateId()}-merged`;
         const mergedPdfFileName = `${mergedBaseName}.pdf`;
-        const mergedPdfFilePath = path.join(PDF_DIRECTORY, mergedPdfFileName);
+        const mergedKey = DIRECTORIES.PDF_DIRECTORY + mergedPdfFileName; // esign/pdf/xxx.pdf
 
-        await fsp.writeFile(mergedPdfFilePath, mergedPdfBytes);
+        await AwsFileUpload.uploadToSpaces({
+            fileData: mergedPdfBytes,
+            filename: mergedPdfFileName,
+            filepath: ESIGN_PDF_PATH,
+            mimetype: "application/pdf",
+        });
 
-        // URL to be stored in Envelope.pdf (String)
-        const mergedPdfUrl = `${BASE_URL}/storage/pdf/${mergedPdfFileName}`;
+        // In DB we store only the KEY (relative path)
+        const mergedPdfKey = mergedKey;
 
         // --------------------- CREATE SIGNERS -----------------------------
         const now = new Date();
@@ -347,7 +193,7 @@ eSignController.generate_template = async (req, res) => {
             signers,
             files,                        // HTML meta array
             documentStatus: SIGN_EVENTS.SENT,
-            pdf: mergedPdfUrl,            // 👈 single merged PDF URL as STRING
+            pdf: mergedPdfKey,            // 👈 store Spaces KEY in DB
             signedPdf: "",
             signedUrl: "",
             tokenUrl: "",
@@ -362,7 +208,6 @@ eSignController.generate_template = async (req, res) => {
                 JWT_SECRET
             );
 
-            // const signUrl = `${BASE_URL}/api/envelopes/by-token/${token}`;
             const signUrl = `${process.env.SIGNING_WEB_URL}?token=${token}`;
 
             env.signers[i].tokenUrl = signUrl;
@@ -399,14 +244,15 @@ eSignController.generate_template = async (req, res) => {
         // --------------------- BUILD RESPONSE DATA ------------------------
         const resFiles = files.map((f) => ({
             filename: f.filename,
-            publicUrl: `${BASE_URL}/storage/originals/${f.publicUrl}`,
+            // full public URL using Spaces
+            publicUrl: `${SPACES_PUBLIC_URL}${f.publicUrl}`,
             mimetype: f.mimetype,
             html: f.html,
         }));
 
         const resMergedPdf = {
             filename: mergedPdfFileName,
-            publicUrl: mergedPdfUrl,
+            publicUrl: `${SPACES_PUBLIC_URL}${mergedPdfKey}`,
             mimetype: "application/pdf",
         };
 
@@ -417,9 +263,9 @@ eSignController.generate_template = async (req, res) => {
             envelopeId: String(env._id),
             envelopeSignUrl: env.signedUrl,
             signers: env.signers,
-            pdf: mergedPdfUrl,        // stored in DB as string
-            mergedPdf: resMergedPdf,  // convenient object
-            resFiles,                 // HTML info
+            pdf: `${SPACES_PUBLIC_URL}${mergedPdfKey}`, // full URL
+            mergedPdf: resMergedPdf,
+            resFiles,
             templatesHtml: files.map((f, index) => ({
                 index,
                 filename: f.filename,
@@ -432,8 +278,9 @@ eSignController.generate_template = async (req, res) => {
     }
 };
 
-
-
+// -----------------------------------------------------------------------------
+// READ ENVELOPE BY TOKEN (returns Spaces URLs)
+// -----------------------------------------------------------------------------
 eSignController.readEnvelopeByToken = async (req, res) => {
     console.log("/api/envelopes/by-token", req.query);
 
@@ -445,7 +292,9 @@ eSignController.readEnvelopeByToken = async (req, res) => {
 
         // find signer by index or email
         let idx =
-            typeof req.signerIndex === "number" ? req.signerIndex : env.signers.findIndex((s) => s.email === req.signerEmail);
+            typeof req.signerIndex === "number"
+                ? req.signerIndex
+                : env.signers.findIndex((s) => s.email === req.signerEmail);
 
         if (idx < 0 || idx >= env.signers.length) {
             return res.status(400).json({ error: "Signer not found in envelope" });
@@ -472,7 +321,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             .filter((f) => f.mimetype === "text/html")
             .map((f) => ({
                 filename: f.filename,
-                url: `${BASE_URL}/storage/originals/${f.publicUrl}`,
+                url: `${SPACES_PUBLIC_URL}${f.publicUrl}`, // Spaces URL
                 mimetype: f.mimetype,
                 html: f.html || null,
             }));
@@ -493,7 +342,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             },
             files: env.files.map((f) => ({
                 filename: f.filename,
-                url: `${BASE_URL}/storage/originals/${f.publicUrl}`,
+                url: `${SPACES_PUBLIC_URL}${f.publicUrl}`, // Spaces URL
                 mimetype: f.mimetype,
             })),
             htmlTemplates,
@@ -502,8 +351,11 @@ eSignController.readEnvelopeByToken = async (req, res) => {
         console.error(err);
         return res.status(500).json({ error: "Failed to load envelope" });
     }
-}
+};
 
+// -----------------------------------------------------------------------------
+// COMPLETE ENVELOPE (save signed PDF in Spaces)
+// -----------------------------------------------------------------------------
 eSignController.completeEnvelope = async (req, res) => {
     let browser;
     try {
@@ -515,12 +367,16 @@ eSignController.completeEnvelope = async (req, res) => {
         const signerEmail = req.signerEmail;
 
         if (!envelopeId || !signerEmail) {
-            return res.status(400).json({ error: "Missing envelopeId or signerEmail in request", });
+            return res.status(400).json({
+                error: "Missing envelopeId or signerEmail in request",
+            });
         }
 
         // Validate template array
         if (!Array.isArray(template) || template.length === 0) {
-            return res.status(400).json({ error: "template must be a non-empty array of HTML strings", });
+            return res.status(400).json({
+                error: "template must be a non-empty array of HTML strings",
+            });
         }
 
         // 2. Find envelope by _id and signer email
@@ -529,7 +385,9 @@ eSignController.completeEnvelope = async (req, res) => {
             "signers.email": signerEmail,
         });
 
-        if (!env) { return res.status(404).json({ error: "Envelope not found" }); }
+        if (!env) {
+            return res.status(404).json({ error: "Envelope not found" });
+        }
 
         // 3. Find signer index in signers array
         const idx = env.signers.findIndex((s) => s.email === signerEmail);
@@ -539,7 +397,9 @@ eSignController.completeEnvelope = async (req, res) => {
 
         // Optional: prevent double completion
         if (env.signers[idx].status === SIGN_EVENTS.COMPLETED) {
-            return res.status(400).json({ error: "This signer has already completed the document", });
+            return res.status(400).json({
+                error: "This signer has already completed the document",
+            });
         }
 
         // 4. Update env.files[].html from req.body.template
@@ -550,7 +410,7 @@ eSignController.completeEnvelope = async (req, res) => {
             return {
                 filename: prev.filename || `page-${index + 1}.html`,
                 storedName: prev.storedName || prev.filename || "",
-                publicUrl: prev.publicUrl || "",
+                publicUrl: prev.publicUrl || "", // keep previous key if exists
                 mimetype: prev.mimetype || "text/html",
                 html: htmlStr, // set/override HTML from request
             };
@@ -562,12 +422,11 @@ eSignController.completeEnvelope = async (req, res) => {
             .filter((h) => h.trim().length > 0);
 
         if (htmlParts.length === 0) {
-            return res.status(400).json({ error: "No HTML content found in envelope files" });
+            return res.status(400).json({
+                error: "No HTML content found in envelope files",
+            });
         }
 
-        // ✅ paging logic controlled here:
-        // - 1 template → continuous pages ✨
-        // - >1 templates → each on a new page ✨
         const fullHtml = buildFullPdfHtml(htmlParts);
 
         // 6. Generate PDF from HTML using Puppeteer
@@ -587,24 +446,28 @@ eSignController.completeEnvelope = async (req, res) => {
                 bottom: "15mm",
                 left: "15mm",
             },
-            // landscape: true, // enable if you need landscape
         });
 
-
+        // 7. Upload signed PDF to Spaces
         const outputName = `envelope-${env._id}-${Date.now()}.pdf`;
-        const outputPath = path.join(SIGNED_DIRECTORY, outputName);
+        const signedKey = ESIGN_SIGNED_PATH + outputName; // esign/signed/xxx.pdf
 
-        await fs.promises.writeFile(outputPath, pdfBuffer);
+        await AwsFileUpload.uploadToSpaces({
+            fileData: pdfBuffer,
+            filename: outputName,
+            filepath: ESIGN_SIGNED_PATH,
+            mimetype: "application/pdf",
+        });
 
-        const signedUrl = outputName; // store only file name in DB
+        const signedUrlKey = signedKey; // only KEY in DB
 
         // 8. Update this signer status & signedUrl
         env.signers[idx].status = SIGN_EVENTS.COMPLETED;
         env.signers[idx].completedAt = new Date();
-        env.signers[idx].signedUrl = signedUrl;
+        env.signers[idx].signedUrl = signedUrlKey;
 
-        // 9. Update envelope-level signedPdf (file name)
-        env.signedPdf = signedUrl;
+        // 9. Update envelope-level signedPdf (key)
+        env.signedPdf = signedUrlKey;
 
         // 10. If ALL signers completed => envelope COMPLETED
         if (env.signers.every((s) => s.status === SIGN_EVENTS.COMPLETED)) {
@@ -613,11 +476,11 @@ eSignController.completeEnvelope = async (req, res) => {
 
         await env.save();
 
-        // 11. Send response with full download URL
+        // 11. Send response with full download URL (Spaces)
         return res.json({
             status: true,
             message: "Envelope completed successfully",
-            downloadUrl: `${BASE_URL}/storage/signed/${env.signedPdf}`,
+            downloadUrl: `${SPACES_PUBLIC_URL}${env.signedPdf}`, // full URL
             envelopeId: String(env._id),
             signerIndex: idx,
             signerEmail: env.signers[idx].email,
@@ -642,8 +505,9 @@ eSignController.completeEnvelope = async (req, res) => {
     }
 };
 
-
-
+// -----------------------------------------------------------------------------
+// CANCEL ENVELOPE (no Spaces interaction needed here)
+// -----------------------------------------------------------------------------
 eSignController.cancelEnvelope = async (req, res) => {
     console.log("/api/envelopes/:token/cancel");
     let env = await Envelope.findById(req.envId);
@@ -656,8 +520,32 @@ eSignController.cancelEnvelope = async (req, res) => {
     }));
     await env.save();
 
-    res.json({ status: true, message: "Cancelled successfully", envelopeId: String(env._id) });
-}
+    res.json({
+        status: true,
+        message: "Cancelled successfully",
+        envelopeId: String(env._id),
+    });
+};
 
+eSignController.uploadImg = async (req, res) => {
 
-module.exports = eSignController
+    const files = req.files;
+    let s3Directory = ESIGN_PDF_PATH;
+
+    let imgPath = `${Date.now()}.${files.file.name.substr(files.file.name.lastIndexOf('.') + 1)}`;
+
+    await AwsFileUpload.uploadToSpaces({
+        fileData: files.file.data,
+        filename: imgPath,
+        filepath: s3Directory,
+        mimetype: files.file.mimetype
+    });
+
+    return res.json({
+        status: true,
+        message: "Cancelled successfully",
+        url: process.env.SPACES_PUBLIC_URL + DIRECTORIES.PDF_DIRECTORY + imgPath
+    });
+};
+
+module.exports = eSignController;

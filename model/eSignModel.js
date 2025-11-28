@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { SIGN_EVENTS } = require("../contance.js");
+const { SIGN_EVENTS } = require("../config/contance.js");
 
 
 const originalFileSchema = new mongoose.Schema(

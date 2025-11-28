@@ -9,6 +9,9 @@ const mime = require("mime-types");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const ejs = require("ejs");
+const fileUpload = require('express-fileupload')
+
+
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -21,7 +24,7 @@ app.use('/storage', express.static('storage'));
 //     })
 // );
 app.use(cors())
-
+app.use(fileUpload())
 // -------------------- ENV CONFIG --------------------
 const PORT = process.env.PORT || 4013;
 const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
@@ -48,24 +51,24 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
 // const IS_PROD =
 //     process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 
-const STORAGE_DIR = path.join("storage");
-const ORIGINALS_DIR = path.join("./storage/originals");
-const PDF_DIR = path.join("./storage/pdf");
-const SIGNED_DIR = path.join("./storage/signed");
+// const STORAGE_DIR = path.join("storage");
+// const ORIGINALS_DIR = path.join("./storage/originals");
+// const PDF_DIR = path.join("./storage/pdf");
+// const SIGNED_DIR = path.join("./storage/signed");
 
 
-async function prepareStorage() {
-    try {
-        await fs.mkdirSync(STORAGE_DIR, { recursive: true });
-        await fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
-        await fs.mkdirSync(PDF_DIR, { recursive: true });
-        await fs.mkdirSync(SIGNED_DIR, { recursive: true });
-        console.log("✔ Storage folders created:", STORAGE_DIR);
-    } catch (err) {
-        console.error("❌ Failed to create storage folders:", err);
-    }
-}
-prepareStorage();
+// async function prepareStorage() {
+//     try {
+//         await fs.mkdirSync(STORAGE_DIR, { recursive: true });
+//         await fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
+//         await fs.mkdirSync(PDF_DIR, { recursive: true });
+//         await fs.mkdirSync(SIGNED_DIR, { recursive: true });
+//         console.log("✔ Storage folders created:", STORAGE_DIR);
+//     } catch (err) {
+//         console.error("❌ Failed to create storage folders:", err);
+//     }
+// }
+// prepareStorage();
 
 app.get("/", (req, res) => {
     res.json({ message: `Welcome to e_sign api.` });
