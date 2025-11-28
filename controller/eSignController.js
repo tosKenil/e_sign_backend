@@ -8,8 +8,8 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET, BASE_URL } = process.env;
 
 const fsp = require("fs/promises");
-const ORIGINALS_DIR = path.join(__dirname, "..", "storage", "originals");
-const SIGNED_DIR = path.join(__dirname, "..", "storage", "signed");
+const ORIGINALS_DIR = path.join(__dirname, "../", "storage", "/originals");
+const SIGNED_DIR = path.join(__dirname, "../", "storage", "/signed");
 const { generatePdfDocumentFromTemplate, buildFullPdfHtml } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
 const { PDFDocument } = require('pdf-lib');
