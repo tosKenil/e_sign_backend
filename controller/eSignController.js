@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET, BASE_URL } = process.env;
 
 const fsp = require("fs/promises");
-const ORIGINALS_DIR = path.join(__dirname, "../", "storage", "/originals");
+const ORIGINALS_DIR = path.join("storage", "/originals");
 const SIGNED_DIR = path.join(__dirname, "../", "storage", "/signed");
 const { generatePdfDocumentFromTemplate, buildFullPdfHtml } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
@@ -234,7 +234,7 @@ eSignController.generate_template = async (req, res) => {
         // --------------------- PREPARE DIRECTORIES ------------------------
         // HTML originals dir (already in your code)
         // Create a /pdf folder next to it if not exists
-        const PDF_DIR = path.join(path.join(__dirname, "../", "storage", "/pdf"));
+        const PDF_DIR = path.join(path.join("storage", "/pdf"));
         await fsp.mkdir(PDF_DIR, { recursive: true });
 
         // --------------------- SAVE HTML + GENERATE INDIVIDUAL PDF BUFFERS ---------------
