@@ -48,7 +48,7 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
 const IS_PROD =
     process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
 
-const STORAGE_DIR = /*IS_PROD ? "/tmp/storage" :*/ path.join(__dirname, "storage");
+const STORAGE_DIR = /*IS_PROD ?*/ "/tmp/storage" /* :path.join(__dirname, "storage");*/
 const ORIGINALS_DIR = path.join(STORAGE_DIR, "originals");
 const PDF_DIR = path.join(STORAGE_DIR, "pdf");
 const SIGNED_DIR = path.join(STORAGE_DIR, "signed");
