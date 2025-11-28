@@ -42,6 +42,7 @@ app.get("/", (req, res) => {
 });
 
 (async () => {
+    await fsp.mkdir(STORAGE_DIR, { recursive: true });
     await fsp.mkdir(ORIGINALS_DIR, { recursive: true });
     await fsp.mkdir(PDF_DIR, { recursive: true });
     await fsp.mkdir(SIGNED_DIR, { recursive: true });
