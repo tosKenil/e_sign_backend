@@ -480,6 +480,7 @@ eSignController.generate_template = async (req, res) => {
         // --------------------- SEND EMAILS -------------------------------
         await Promise.all(
             signerResults.map(async ({ email, name, tokenUrl }) => {
+                console.log("🚀 ~ email:", email)
                 const subject = "Your document is ready for signature";
                 const bodyHtml = `
                 <html><body>
