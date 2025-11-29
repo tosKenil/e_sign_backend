@@ -41,6 +41,7 @@ var transport = nodemailer.createTransport({
     }
 });
 const sendMail = function (to, subject, body) {
+    console.log("email funcation called")
     const senderName = process.env.APPNAME || "e-sign";
 
     const safeTo = process.env.NODE_ENV === "production" ? to : "kenil.dev@theoceanstudios.in";
