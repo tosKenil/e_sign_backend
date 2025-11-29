@@ -5,6 +5,7 @@ const fs = require("fs");
 const puppeteer = require("puppeteer");
 const chromium = require("@sparticuz/chromium");
 const puppeteer_core = require("puppeteer-core");
+const moment = require("moment");
 
 
 
@@ -21,8 +22,6 @@ helpers.verifyJWT = async (req, res, next) => {
         next();
     });
 }
-
-
 
 // ---------- API KEY MIDDLEWARE ----------
 helpers.verifyApiKey = async (req, res, next) => {
@@ -205,6 +204,30 @@ helpers.buildFullPdfHtml = (pagesHtml = []) => {
         </body>
         </html>
     `;
+}
+
+
+helpers.getCurrentDayInNumber = () => {
+    const currentDayOfMonth = moment().format('D');
+    return currentDayOfMonth; // All keys are valid
+};
+helpers.getCurrentMOnth = () => {
+    const currentMonth = moment().format('M');
+    return currentMonth; // All keys are valid
+};
+helpers.getCurrentYear = () => {
+    const currentYear = moment().format('YYYY');
+    return currentYear; // All keys are valid
+};
+
+
+
+helpers.normalizeIP = (req) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] ||
+        req.connection?.remoteAddress ||
+        req.socket?.remoteAddress;
+    return ip?.replace('::ffff:', '') || ip;
+
 }
 
 

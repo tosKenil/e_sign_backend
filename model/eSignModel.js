@@ -17,17 +17,13 @@ const signerSchema = new mongoose.Schema(
     {
         email: { type: String, required: true },
         name: { type: String, default: "" },
+        ipAddress: { type: String, default: "" },
         status: {
             type: String,
-            enum: [
-                SIGN_EVENTS.PENDING,
-                SIGN_EVENTS.SENT,
-                SIGN_EVENTS.DELIVERED,
-                SIGN_EVENTS.COMPLETED,
-                SIGN_EVENTS.VOIDED,
-            ],
+            enum: [SIGN_EVENTS.PENDING, SIGN_EVENTS.SENT, SIGN_EVENTS.DELIVERED, SIGN_EVENTS.COMPLETED, SIGN_EVENTS.VOIDED,],
             default: SIGN_EVENTS.PENDING,
         },
+        location: { type: Object, default: {} },
         sentAt: Date,
         deliveredAt: Date,
         completedAt: Date,
