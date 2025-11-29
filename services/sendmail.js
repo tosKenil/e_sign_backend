@@ -53,7 +53,7 @@ const sendMail = function (to, subject, body) {
     }
     transport.sendMail(message, function (err, info) {
         if (err) {
-            console.log(err)
+            console.log("error occurred. " + err.message);
         } else {
             console.log("Message sent successfully");
         }
