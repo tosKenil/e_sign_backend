@@ -540,7 +540,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
         }
 
         const htmlTemplates = (env.files || [])
-            .filter((f) => f.mimetype === "text/html")
+            // .filter((f) => f.mimetype == "text/html")
             .map((f) => ({
                 filename: f.filename,
                 url: `${SPACES_PUBLIC_URL}/storage/originals/${f.publicUrl}`, // Spaces URL
