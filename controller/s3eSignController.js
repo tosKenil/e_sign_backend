@@ -423,7 +423,7 @@ eSignController.generate_template = async (req, res) => {
 
         const mergedBaseName = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}_${Date.now()}-merged`;
         const mergedPdfFileName = `${mergedBaseName}.pdf`;
-        const mergedKey = DIRECTORIES.PDF_DIRECTORY + mergedPdfFileName;
+        const mergedKey = /*DIRECTORIES.PDF_DIRECTORY +*/ mergedPdfFileName;
 
         // Upload merged PDF
         await AwsFileUpload.uploadToSpaces({
@@ -543,7 +543,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             .filter((f) => f.mimetype === "text/html")
             .map((f) => ({
                 filename: f.filename,
-                url: `${SPACES_PUBLIC_URL}${f.publicUrl}`, // Spaces URL
+                url: `${SPACES_PUBLIC_URL}/storage/originals/${f.publicUrl}`, // Spaces URL
                 mimetype: f.mimetype,
                 html: f.html || null,
             }));
@@ -564,7 +564,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             },
             files: env.files.map((f) => ({
                 filename: f.filename,
-                url: `${SPACES_PUBLIC_URL}${f.publicUrl}`, // Spaces URL
+                url: `${SPACES_PUBLIC_URL}/storage/originals/${f.publicUrl}`, // Spaces URL
                 mimetype: f.mimetype,
             })),
             htmlTemplates,
@@ -580,7 +580,6 @@ eSignController.completeEnvelope = async (req, res) => {
     try {
         console.log("POST /api/envelopes/complete", req.query);
 
-
         const { template, location } = req.body;
         const envelopeId = req.envId;
         const signerEmail = req.signerEmail;
@@ -591,13 +590,11 @@ eSignController.completeEnvelope = async (req, res) => {
             });
         }
 
-
         if (!Array.isArray(template) || template.length === 0) {
             return res.status(400).json({
                 error: "template must be a non-empty array of HTML strings",
             });
         }
-
 
         let env = await Envelope.findOne({ _id: envelopeId, "signers.email": signerEmail });
 
@@ -605,19 +602,16 @@ eSignController.completeEnvelope = async (req, res) => {
             return res.status(404).json({ error: "Envelope not found" });
         }
 
-
         const idx = env.signers.findIndex((s) => s.email === signerEmail);
         if (idx < 0) {
             return res.status(400).json({ error: "Signer not found in envelope" });
         }
-
 
         if (env.signers[idx].status === SIGN_EVENTS.COMPLETED) {
             return res.status(400).json({
                 error: "This signer has already completed the document",
             });
         }
-
 
         const existingFiles = Array.isArray(env.files) ? env.files : [];
 
@@ -632,7 +626,6 @@ eSignController.completeEnvelope = async (req, res) => {
             };
         });
 
-
         const htmlParts = env.files
             .map((f) => f.html || "")
             .filter((h) => h.trim().length > 0);
@@ -644,7 +637,6 @@ eSignController.completeEnvelope = async (req, res) => {
         }
 
         const fullHtml = buildFullPdfHtml(htmlParts);
-
 
         if (process.env.NODE_ENV === "development") {
             browser = await puppeteer.launch({ args: ["--no-sandbox"] });
@@ -675,7 +667,7 @@ eSignController.completeEnvelope = async (req, res) => {
         });
 
         const outputName = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}_${Date.now()}.pdf`;
-        const signedKey = ESIGN_SIGNED_PATH + outputName;
+        const signedKey = /*ESIGN_SIGNED_PATH +*/ outputName;
 
         await AwsFileUpload.uploadToSpaces({
             fileData: pdfBuffer,
@@ -703,7 +695,7 @@ eSignController.completeEnvelope = async (req, res) => {
         return res.json({
             status: true,
             message: "Envelope completed successfully",
-            downloadUrl: `${SPACES_PUBLIC_URL}${env.signedPdf}`,
+            downloadUrl: `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}`,
             envelopeId: String(env._id),
             signerIndex: idx,
             signerEmail: env.signers[idx].email,
