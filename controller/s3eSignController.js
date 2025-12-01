@@ -747,20 +747,21 @@ eSignController.envelopeDetails = async (req, res) => {
     let env = await Envelope.findById(envId);
     if (!env) return res.status(404).json({ error: "Envelope not found" });
 
-    let result = {
-        _id: env._id,
-        documentStatus: env.documentStatus,
-        signers: env.signers,
-        pdf: `${SPACES_PUBLIC_URL}/storage/pdf/${env.pdf}`,
-        signedPdf: `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}`,
-        createdAt: env.createdAt,
-        updatedAt: env.updatedAt
+    env.pdf = `${SPACES_PUBLIC_URL}/storage/pdf/${env.pdf}`;
+    env.signedPdf = `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}`;
+
+    if (env.signers && Array.isArray(env.signers)) {
+        env.signers = env.signers.map((signer) => ({
+            ...signer,
+            fileUrl: signer.file ? `${SPACES_PUBLIC_URL}/storage/signed/${signer.file}` : null,
+        }));
     }
+
 
     res.json({
         status: true,
         message: "Envelope details fetched successfully",
-        envelopeId: result,
+        envelopeId: env,
     });
 };
 
