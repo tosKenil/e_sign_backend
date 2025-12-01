@@ -689,12 +689,12 @@ eSignController.completeEnvelope = async (req, res) => {
         });
 
         // Public URL for the uploaded PDF
-        const pdfPublicUrl = `${SPACES_PUBLIC_URL}/storage/pdf/${outputName}`;
+        const pdfPublicUrl = `${outputName}`;
 
         // Update each file entry in DB to point to the same final PDF
         env.files = env.files.map((file, index) => ({
             ...file,
-            filename: outputName,          // final PDF filename
+            // filename: outputName,          // final PDF filename
             storedName: signedKey,         // key stored in Spaces
             publicUrl: pdfPublicUrl,       // public URL to the PDF
             mimetype: "application/pdf",   // now it's a PDF
@@ -720,7 +720,7 @@ eSignController.completeEnvelope = async (req, res) => {
         return res.json({
             status: true,
             message: "Envelope completed successfully",
-            downloadUrl: pdfPublicUrl, // direct link to /storage/pdf/
+            downloadUrl: `${SPACES_PUBLIC_URL}/storage/pdf/${outputName}`, // direct link to /storage/pdf/
             envelopeId: String(env._id),
             signerIndex: idx,
             signerEmail: env.signers[idx].email,
