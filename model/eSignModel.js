@@ -9,8 +9,7 @@ const originalFileSchema = new mongoose.Schema(
         publicUrl: String,
         mimetype: String,
         html: String, // ⭐ NEW: full HTML content
-    },
-    { _id: false }
+    }
 );
 
 const signerSchema = new mongoose.Schema(
@@ -29,8 +28,7 @@ const signerSchema = new mongoose.Schema(
         completedAt: Date,
         signedUrl: String,
         tokenUrl: String,
-    },
-    { _id: false }
+    }
 );
 
 const envelopeSchema = new mongoose.Schema(
