@@ -596,7 +596,10 @@ eSignController.completeEnvelope = async (req, res) => {
             });
         }
 
-        let env = await Envelope.findOne({ _id: envelopeId, "signers.email": signerEmail });
+        let env = await Envelope.findOne({
+            _id: envelopeId,
+            "signers.email": signerEmail,
+        });
 
         if (!env) {
             return res.status(404).json({ error: "Envelope not found" });
@@ -615,17 +618,19 @@ eSignController.completeEnvelope = async (req, res) => {
 
         const existingFiles = Array.isArray(env.files) ? env.files : [];
 
+        // Store the HTML templates in env.files (for reference / debugging)
         env.files = template.map((htmlStr, index) => {
             const prev = existingFiles[index] || {};
             return {
                 filename: prev.filename || `page-${index + 1}.html`,
-                storedName: prev.storedName || prev.filename || "",
+                storedName: prev.storedName || "",
                 publicUrl: prev.publicUrl || "",
-                mimetype: prev.mimetype || "text/html",
+                mimetype: "text/html",
                 html: htmlStr,
             };
         });
 
+        // Collect valid HTML parts
         const htmlParts = env.files
             .map((f) => f.html || "")
             .filter((h) => h.trim().length > 0);
@@ -636,8 +641,10 @@ eSignController.completeEnvelope = async (req, res) => {
             });
         }
 
+        // Build the full HTML for the PDF
         const fullHtml = buildFullPdfHtml(htmlParts);
 
+        // Launch Puppeteer
         if (process.env.NODE_ENV === "development") {
             browser = await puppeteer.launch({ args: ["--no-sandbox"] });
         } else {
@@ -655,6 +662,7 @@ eSignController.completeEnvelope = async (req, res) => {
             waitUntil: "networkidle0",
         });
 
+        // Generate PDF buffer
         const pdfBuffer = await page.pdf({
             format: "A4",
             printBackground: true,
@@ -666,26 +674,43 @@ eSignController.completeEnvelope = async (req, res) => {
             },
         });
 
+        // Build output filename
         const outputName = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}_${Date.now()}.pdf`;
-        const signedKey = /*ESIGN_SIGNED_PATH +*/ outputName;
 
+        // Key / storedName for Spaces
+        const signedKey = outputName;
+
+        // Upload to /storage/pdf/
         await AwsFileUpload.uploadToSpaces({
             fileData: pdfBuffer,
             filename: outputName,
-            filepath: ESIGN_SIGNED_PATH,
+            filepath: ESIGN_PDF_PATH, // <-- ensure this points to the "pdf" folder in Spaces
             mimetype: "application/pdf",
         });
 
-        const signedUrlKey = signedKey;
+        // Public URL for the uploaded PDF
+        const pdfPublicUrl = `${SPACES_PUBLIC_URL}/storage/pdf/${outputName}`;
 
+        // Update each file entry in DB to point to the same final PDF
+        env.files = env.files.map((file, index) => ({
+            ...file,
+            filename: outputName,          // final PDF filename
+            storedName: signedKey,         // key stored in Spaces
+            publicUrl: pdfPublicUrl,       // public URL to the PDF
+            mimetype: "application/pdf",   // now it's a PDF
+        }));
+
+        // Update signer info
         env.signers[idx].status = SIGN_EVENTS.COMPLETED;
         env.signers[idx].completedAt = new Date();
-        env.signers[idx].signedUrl = signedUrlKey;
+        env.signers[idx].signedUrl = signedKey; // you can also store pdfPublicUrl if you prefer
         env.signers[idx].location = location || {};
         env.signers[idx].ipAddress = normalizeIP(req) || "";
 
-        env.signedPdf = signedUrlKey;
+        // Store final PDF reference on envelope
+        env.signedPdf = signedKey;
 
+        // If all signers are done, mark document as completed
         if (env.signers.every((s) => s.status === SIGN_EVENTS.COMPLETED)) {
             env.documentStatus = SIGN_EVENTS.COMPLETED;
         }
@@ -695,7 +720,7 @@ eSignController.completeEnvelope = async (req, res) => {
         return res.json({
             status: true,
             message: "Envelope completed successfully",
-            downloadUrl: `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}`,
+            downloadUrl: pdfPublicUrl, // direct link to /storage/pdf/
             envelopeId: String(env._id),
             signerIndex: idx,
             signerEmail: env.signers[idx].email,
@@ -719,6 +744,151 @@ eSignController.completeEnvelope = async (req, res) => {
         }
     }
 };
+
+// eSignController.completeEnvelope = async (req, res) => {
+//     let browser;
+//     try {
+//         console.log("POST /api/envelopes/complete", req.query);
+
+//         const { template, location } = req.body;
+//         const envelopeId = req.envId;
+//         const signerEmail = req.signerEmail;
+
+//         if (!envelopeId || !signerEmail) {
+//             return res.status(400).json({
+//                 error: "Missing envelopeId or signerEmail in request",
+//             });
+//         }
+
+//         if (!Array.isArray(template) || template.length === 0) {
+//             return res.status(400).json({
+//                 error: "template must be a non-empty array of HTML strings",
+//             });
+//         }
+
+//         let env = await Envelope.findOne({ _id: envelopeId, "signers.email": signerEmail });
+
+//         if (!env) {
+//             return res.status(404).json({ error: "Envelope not found" });
+//         }
+
+//         const idx = env.signers.findIndex((s) => s.email === signerEmail);
+//         if (idx < 0) {
+//             return res.status(400).json({ error: "Signer not found in envelope" });
+//         }
+
+//         if (env.signers[idx].status === SIGN_EVENTS.COMPLETED) {
+//             return res.status(400).json({
+//                 error: "This signer has already completed the document",
+//             });
+//         }
+
+//         const existingFiles = Array.isArray(env.files) ? env.files : [];
+
+//         env.files = template.map((htmlStr, index) => {
+//             const prev = existingFiles[index] || {};
+//             return {
+//                 filename: prev.filename || `page-${index + 1}.html`,
+//                 storedName: prev.storedName || prev.filename || "",
+//                 publicUrl: prev.publicUrl || "",
+//                 mimetype: prev.mimetype || "text/html",
+//                 html: htmlStr,
+//             };
+//         });
+
+//         const htmlParts = env.files
+//             .map((f) => f.html || "")
+//             .filter((h) => h.trim().length > 0);
+
+//         if (htmlParts.length === 0) {
+//             return res.status(400).json({
+//                 error: "No HTML content found in envelope files",
+//             });
+//         }
+
+//         const fullHtml = buildFullPdfHtml(htmlParts);
+
+//         if (process.env.NODE_ENV === "development") {
+//             browser = await puppeteer.launch({ args: ["--no-sandbox"] });
+//         } else {
+//             browser = await puppeteer_core.launch({
+//                 args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
+//                 defaultViewport: chromium.defaultViewport,
+//                 executablePath: await chromium.executablePath(),
+//                 headless: chromium.headless,
+//             });
+//         }
+
+//         const page = await browser.newPage();
+
+//         await page.setContent(fullHtml, {
+//             waitUntil: "networkidle0",
+//         });
+
+//         const pdfBuffer = await page.pdf({
+//             format: "A4",
+//             printBackground: true,
+//             margin: {
+//                 top: "15mm",
+//                 right: "15mm",
+//                 bottom: "15mm",
+//                 left: "15mm",
+//             },
+//         });
+
+//         const outputName = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}_${Date.now()}.pdf`;
+//         const signedKey = /*ESIGN_SIGNED_PATH +*/ outputName;
+
+//         await AwsFileUpload.uploadToSpaces({
+//             fileData: pdfBuffer,
+//             filename: outputName,
+//             filepath: ESIGN_SIGNED_PATH,
+//             mimetype: "application/pdf",
+//         });
+
+//         const signedUrlKey = signedKey;
+
+//         env.signers[idx].status = SIGN_EVENTS.COMPLETED;
+//         env.signers[idx].completedAt = new Date();
+//         env.signers[idx].signedUrl = signedUrlKey;
+//         env.signers[idx].location = location || {};
+//         env.signers[idx].ipAddress = normalizeIP(req) || "";
+
+//         env.signedPdf = signedUrlKey;
+
+//         if (env.signers.every((s) => s.status === SIGN_EVENTS.COMPLETED)) {
+//             env.documentStatus = SIGN_EVENTS.COMPLETED;
+//         }
+
+//         await env.save();
+
+//         return res.json({
+//             status: true,
+//             message: "Envelope completed successfully",
+//             downloadUrl: `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}`,
+//             envelopeId: String(env._id),
+//             signerIndex: idx,
+//             signerEmail: env.signers[idx].email,
+//             documentStatus: env.documentStatus,
+//         });
+//     } catch (err) {
+//         console.error(
+//             "Error in /api/envelopes/complete",
+//             err && err.stack ? err.stack : err
+//         );
+//         return res
+//             .status(500)
+//             .json({ error: err?.message || "Envelope completion failed" });
+//     } finally {
+//         if (browser) {
+//             try {
+//                 await browser.close();
+//             } catch (e) {
+//                 console.error("Error closing Puppeteer browser", e);
+//             }
+//         }
+//     }
+// };
 
 eSignController.cancelEnvelope = async (req, res) => {
     console.log("/api/envelopes/:token/cancel");
