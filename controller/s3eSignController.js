@@ -2,10 +2,10 @@ const eSignController = {};
 const fs = require("fs");
 const path = require("path");
 const sendMail = require("../services/sendmail.js");
-const { SIGN_EVENTS, DIRECTORIES, ESIGN_PATHS } = require("../config/contance.js");
+const { SIGN_EVENTS, DIRECTORIES, ESIGN_PATHS, userId, STATICUSERID } = require("../config/contance.js");
 const Envelope = require("../model/eSignModel");
 const jwt = require("jsonwebtoken");
-const { generatePdfDocumentFromTemplate, buildFullPdfHtml, getCurrentDayInNumber, getCurrentMOnth, getCurrentYear, normalizeIP } = require("../middleware/helper");
+const { generatePdfDocumentFromTemplate, buildFullPdfHtml, getCurrentDayInNumber, getCurrentMOnth, getCurrentYear, normalizeIP, triggerWebhookEvent, setEnvelopeData } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
 const chromium = require("@sparticuz/chromium");
 const puppeteer_core = require("puppeteer-core");
@@ -173,6 +173,9 @@ eSignController.generate_template = async (req, res) => {
             signedUrl: "",
             tokenUrl: "",
         });
+
+        const setEnv = await setEnvelopeData(env._id, SIGN_EVENTS.SENT)
+        await triggerWebhookEvent(SIGN_EVENTS.SENT, STATICUSERID, setEnv)
 
         // Generate token URLs
         const signerResults = [];
@@ -477,7 +480,13 @@ eSignController.readEnvelopeByToken = async (req, res) => {
                 env.documentStatus = SIGN_EVENTS.DELIVERED;
             }
 
+            const setEnv = await setEnvelopeData(env._id, SIGN_EVENTS.DELIVERED)
+            await triggerWebhookEvent(SIGN_EVENTS.DELIVERED, STATICUSERID, setEnv)
+
+
+
             await env.save();
+
         }
 
         const htmlTemplates = (env.files || [])
@@ -656,7 +665,10 @@ eSignController.completeEnvelope = async (req, res) => {
             env.documentStatus = SIGN_EVENTS.COMPLETED;
         }
 
-        await env.save();
+        const envelopeData = await env.save();
+
+        const setEnv = await setEnvelopeData(envelopeData._id, SIGN_EVENTS.COMPLETED)
+        await triggerWebhookEvent(SIGN_EVENTS.COMPLETED, STATICUSERID, setEnv)
 
         const completeTemplatePath = path.join(__dirname, "../public/template/completed.html");
         let completeEmailTemplate = fs.readFileSync(completeTemplatePath, "utf8");
@@ -849,12 +861,15 @@ eSignController.cancelEnvelope = async (req, res) => {
     let env = await Envelope.findById(req.envId);
     if (!env) return res.status(404).json({ error: "Envelope not found" });
 
-    env.documentStatus = SIGN_EVENTS.VOIDED;
+    env.documentStatus = SIGN_EVENTS.AVOIDED;
     env.signers = env.signers.map((s) => ({
         ...s.toObject(),
-        status: SIGN_EVENTS.VOIDED,
+        status: SIGN_EVENTS.AVOIDED,
     }));
     await env.save();
+
+    const setEnv = await setEnvelopeData(env._id, SIGN_EVENTS.AVOIDED)
+    await triggerWebhookEvent(SIGN_EVENTS.AVOIDED, STATICUSERID, setEnv)
 
     res.json({
         status: true,

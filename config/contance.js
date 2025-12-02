@@ -2,7 +2,7 @@ module.exports.SIGN_EVENTS = {
     PENDING: 'pending',
     SENT: 'sent',
     DELIVERED: 'delivered',
-    VOIDED: 'voided',
+    AVOIDED: 'avoided',
     COMPLETED: 'completed',
 }
 
@@ -17,3 +17,12 @@ module.exports.ESIGN_PATHS = {
     ESIGN_PDF_PATH: "pdf/",
     ESIGN_SIGNED_PATH: "signed/",
 }
+
+module.exports.WEBHOOK_EVENTS = {
+    ACTIVE: "active",
+    PENDING: "pending",
+    FAILED: "failed",
+    COMPLETED: "completed",
+}
+
+module.exports.STATICUSERID = "692ea3cd6f5ab96d0d8afd6e"

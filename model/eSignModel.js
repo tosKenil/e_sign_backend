@@ -19,7 +19,7 @@ const signerSchema = new mongoose.Schema(
         ipAddress: { type: String, default: "" },
         status: {
             type: String,
-            enum: [SIGN_EVENTS.PENDING, SIGN_EVENTS.SENT, SIGN_EVENTS.DELIVERED, SIGN_EVENTS.COMPLETED, SIGN_EVENTS.VOIDED,],
+            enum: [SIGN_EVENTS.PENDING, SIGN_EVENTS.SENT, SIGN_EVENTS.DELIVERED, SIGN_EVENTS.COMPLETED, SIGN_EVENTS.AVOIDED,],
             default: SIGN_EVENTS.PENDING,
         },
         location: { type: Object, default: {} },
@@ -40,7 +40,7 @@ const envelopeSchema = new mongoose.Schema(
                 SIGN_EVENTS.PENDING,
                 SIGN_EVENTS.SENT,
                 SIGN_EVENTS.DELIVERED,
-                SIGN_EVENTS.VOIDED,
+                SIGN_EVENTS.AVOIDED,
                 SIGN_EVENTS.COMPLETED,
             ],
             default: SIGN_EVENTS.PENDING,

@@ -6,6 +6,11 @@ const puppeteer = require("puppeteer");
 const chromium = require("@sparticuz/chromium");
 const puppeteer_core = require("puppeteer-core");
 const moment = require("moment");
+const webhookSubscriptionModel = require("../model/webhookSubscriptionModel");
+const { WEBHOOK_EVENTS } = require("../config/contance");
+const webhookEventModel = require("../model/webhookEventModel");
+const { ObjectId } = require('mongodb');
+const sendWebhook = require("../services/sendWebhook");
 
 
 
@@ -229,6 +234,34 @@ helpers.normalizeIP = (req) => {
     return ip?.replace('::ffff:', '') || ip;
 
 }
+
+helpers.setEnvelopeData = (envelopeId, event) => {
+    return {
+        envelopeId, event
+    }
+}
+
+helpers.triggerWebhookEvent = async (eventType, userId, envelopeData) => {
+    try {
+        const subscriptions = await webhookSubscriptionModel.findOne({ eventType: { $in: [eventType] }, isActive: WEBHOOK_EVENTS.ACTIVE, userId: new ObjectId(userId) });
+
+        if (subscriptions) {
+            const webhookData = await webhookEventModel.create({
+                subscriptionId: subscriptions._id,
+                eventType: eventType,
+                payload: envelopeData,
+                status: WEBHOOK_EVENTS.PENDING,
+            });
+
+            return await sendWebhook(webhookData)
+        }
+    } catch (error) {
+        return error
+    }
+
+}
+
+
 
 
 

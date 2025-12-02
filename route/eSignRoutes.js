@@ -2,6 +2,7 @@ const express = require("express");
 const route = express.Router();
 const eSignController = require("../controller/eSignController");
 const s3eSignController = require("../controller/s3eSignController");
+const webhookController = require("../controller/webhookController");
 const verification = require("../middleware/helper.js");
 const path = require("path");
 
@@ -12,5 +13,7 @@ route.post("/envelopes/complete", verification.verifyJWT, s3eSignController.comp
 route.post("/envelopes/cancel", verification.verifyJWT, s3eSignController.cancelEnvelope);
 route.post("/envelopeDetails",  s3eSignController.envelopeDetails);
 route.post("/uploadImg", s3eSignController.uploadImg);
+
+route.post("/webhookRegister", webhookController.registerWebhook);
 
 module.exports = route;

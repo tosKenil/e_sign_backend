@@ -63,7 +63,6 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:4013`;
 //         await fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
 //         await fs.mkdirSync(PDF_DIR, { recursive: true });
 //         await fs.mkdirSync(SIGNED_DIR, { recursive: true });
-//         console.log("✔ Storage folders created:", STORAGE_DIR);
 //     } catch (err) {
 //         console.error("❌ Failed to create storage folders:", err);
 //     }

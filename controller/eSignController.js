@@ -539,10 +539,10 @@ eSignController.cancelEnvelope = async (req, res) => {
     let env = await Envelope.findById(req.envId);
     if (!env) return res.status(404).json({ error: "Envelope not found" });
 
-    env.documentStatus = SIGN_EVENTS.VOIDED;
+    env.documentStatus = SIGN_EVENTS.AVOIDED;
     env.signers = env.signers.map((s) => ({
         ...s.toObject(),
-        status: SIGN_EVENTS.VOIDED,
+        status: SIGN_EVENTS.AVOIDED,
     }));
     await env.save();
 
