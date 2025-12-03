@@ -1,18 +1,19 @@
 const { WEBHOOK_EVENTS } = require("../config/contance");
+const webhookSubscriptionModel = require("../model/webhookSubscriptionModel");
 
 const webhookController = {};
 
 webhookController.registerWebhook = async (req, res) => {
-    const { company_id, url, events } = req.body;
+    const { userId, url, events } = req.body;
 
-    const secret_key = crypto.randomBytes(32).toString("hex");
+    const secretKey = crypto.randomBytes(32).toString("hex");
 
-    const webhook = await Webhook.create({
-        company_id,
+    const webhook = await webhookSubscriptionModel.create({
+        userId,
         url,
-        events,
-        secret_key,
-        status: WEBHOOK_EVENTS.ACTIVE
+        eventType: events,
+        secretKey,
+        isActive: WEBHOOK_EVENTS.ACTIVE
     });
 
     res.json({ message: "Webhook Registered", webhook });

@@ -7,7 +7,6 @@ const webhookSubcriptionSchema = new mongoose.Schema(
         eventType: { type: [String], defauly: null, enum: [SIGN_EVENTS.SENT, SIGN_EVENTS.DELIVERED, SIGN_EVENTS.COMPLETED, SIGN_EVENTS.AVOIDED] },
         isActive: { type: String, default: WEBHOOK_EVENTS.ACTIVE },
         secretKey: { type: String, defauly: null },
-        companyId: { type: mongoose.Schema.Types.ObjectId, default: null },
         userId: { type: mongoose.Schema.Types.ObjectId, default: null },
     },
     { collection: "webhook_subscription", timestamps: true }
