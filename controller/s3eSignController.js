@@ -174,9 +174,6 @@ eSignController.generate_template = async (req, res) => {
             tokenUrl: "",
         });
 
-        const setEnv = await setEnvelopeData(env._id, SIGN_EVENTS.SENT)
-        await triggerWebhookEvent(SIGN_EVENTS.SENT, STATICUSERID, setEnv)
-
         // Generate token URLs
         const signerResults = [];
         for (let i = 0; i < env.signers.length; i++) {
@@ -197,6 +194,9 @@ eSignController.generate_template = async (req, res) => {
 
         env.tokenUrl = signerResults[0]?.tokenUrl || "";
         await env.save();
+
+        const setEnv = await setEnvelopeData(env._id, SIGN_EVENTS.SENT)
+        await triggerWebhookEvent(SIGN_EVENTS.SENT, STATICUSERID, setEnv)
 
         // ------------------ Load email template HTML ------------------
         const templatePath = path.join(__dirname, "../public/template/sendDocument.html");
@@ -480,12 +480,10 @@ eSignController.readEnvelopeByToken = async (req, res) => {
                 env.documentStatus = SIGN_EVENTS.DELIVERED;
             }
 
+            await env.save();
+
             const setEnv = await setEnvelopeData(env._id, SIGN_EVENTS.DELIVERED)
             await triggerWebhookEvent(SIGN_EVENTS.DELIVERED, STATICUSERID, setEnv)
-
-
-
-            await env.save();
 
         }
 
