@@ -10,7 +10,7 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const ejs = require("ejs");
 const fileUpload = require('express-fileupload')
-
+const cron = require('node-cron');
 
 
 const app = express();
@@ -69,11 +69,19 @@ const BASE_URL = process.env.BASE_URL || `api.ttsign.co`;
 // }
 // prepareStorage();
 
+
 app.get("/", (req, res) => {
     res.json({ message: `Welcome to e_sign api.` });
 });
 
 const { verifyApiKey } = require("./middleware/helper");
+const backupDatabaseToLocal = require("./controller/cronController");
+
+cron.schedule('0 2 * * *', () => {
+    console.log('⏰ Cron triggered at:', new Date().toISOString());
+    backupDatabaseToLocal();
+});
+
 if (process.env.ACCESS_API_KEY == true || process.env.ACCESS_API_KEY === "true") {
     app.use("/api", verifyApiKey);
 }
