@@ -128,6 +128,7 @@ function getFileObject(filename, isPublic) {
 
 
 function uploadToSpaces(options) {
+   console.log("🚀 ~ uploadToSpaces ~ options:", options)
    return new Promise(function (resolve, reject) {
       try {
          var prefix = spacesFolder ? spacesFolder + '/' : '';

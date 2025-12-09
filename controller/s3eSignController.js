@@ -815,7 +815,7 @@ eSignController.completeEnvelope = async (req, res) => {
         await AwsFileUpload.uploadToSpaces({
             fileData: pdfWithHeaderBuffer,
             filename: outputName,
-            filepath: ESIGN_PDF_PATH, // ensure this is your "pdf" folder
+            filepath: ESIGN_SIGNED_PATH, // ensure this is your "pdf" folder
             mimetype: "application/pdf",
         });
 
@@ -859,7 +859,7 @@ eSignController.completeEnvelope = async (req, res) => {
             env.files?.[0]?.storedName ||
             "Completed Document";
 
-        const completedUrl = `${SPACES_PUBLIC_URL}/storage/pdf/${outputName}`;
+        const completedUrl = `${SPACES_PUBLIC_URL}/storage/signed/${outputName}`;
 
         let emailHtml = completeEmailTemplate
             .replace(/{{completedUrl}}/g, completedUrl)
@@ -872,7 +872,7 @@ eSignController.completeEnvelope = async (req, res) => {
         return res.json({
             status: true,
             message: "Envelope completed successfully",
-            downloadUrl: `${SPACES_PUBLIC_URL}/storage/pdf/${outputName}`,
+            downloadUrl: `${SPACES_PUBLIC_URL}/storage/signed/${outputName}`,
             envelopeId: String(env._id),
             signerIndex: idx,
             signerEmail: env.signers[idx].email,
