@@ -11,8 +11,7 @@ const { WEBHOOK_EVENTS } = require("../config/contance");
 const webhookEventModel = require("../model/webhookEventModel");
 const { ObjectId } = require('mongodb');
 const sendWebhook = require("../services/sendWebhook");
-
-
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 
 helpers.verifyJWT = async (req, res, next) => {
     const token = req.query.token;
@@ -47,6 +46,36 @@ helpers.verifyApiKey = async (req, res, next) => {
 
     next();
 }
+
+helpers.addHeaderToPdf = async (pdfBytes, envelopeId) => {
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+
+    const pages = pdfDoc.getPages();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 9;
+
+    const headerText = `Document ID: ${String(envelopeId)}`;
+
+    pages.forEach((page) => {
+        const { width, height } = page.getSize();
+        const textWidth = font.widthOfTextAtSize(headerText, fontSize);
+
+        // left-aligned header, similar style to your sample PDF
+        const x = 20; // left margin
+        const y = height - fontSize - 10; // a bit below the top edge
+
+        page.drawText(headerText, {
+            x,
+            y,
+            size: fontSize,
+            font,
+            color: rgb(0, 0, 0),
+        });
+    });
+
+    return await pdfDoc.save();
+}
+
 
 helpers.generatePdfDocumentFromTemplate = async ({
     templatePath,
