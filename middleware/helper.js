@@ -54,7 +54,7 @@ helpers.addHeaderToPdf = async (pdfBytes, envelopeId) => {
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontSize = 9;
 
-    const headerText = `Envelope ID: ${String(envelopeId)}`;
+    const headerText = `Document ID: ${String(envelopeId)}`;
 
     pages.forEach((page) => {
         const { width, height } = page.getSize();
