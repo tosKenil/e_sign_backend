@@ -393,7 +393,7 @@ eSignController.generate_template = async (req, res) => {
                 { envId: String(env._id), email: s.email, i },
                 JWT_SECRET
             );
-            const signUrl = `${process.env.SIGNING_WEB_URL}?token=${token}`;
+            const signUrl = `${process.env.SIGNING_WEB_URL}?type=${token}`;
             env.signers[i].tokenUrl = signUrl;
 
             signerResults.push({
@@ -424,7 +424,7 @@ eSignController.generate_template = async (req, res) => {
                     .replace(/{{signUrl}}/g, tokenUrl)
                     .replace(/{{DocumentName}}/g, docName);
 
-                const subject = "Please Sign The Document";
+                const subject = "Please sign the documents";
                 await sendMail(email, subject, emailHtml);
             })
         );
@@ -447,12 +447,8 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             return res.status(404).json({ error: "Envelope not found" });
         }
 
-
         // find signer by index or email
-        let idx =
-            typeof req.signerIndex === "number"
-                ? req.signerIndex
-                : env.signers.findIndex((s) => s.email === req.signerEmail);
+        let idx = typeof req.signerIndex === "number" ? req.signerIndex : env.signers.findIndex((s) => s.email === req.signerEmail);
 
         if (idx < 0 || idx >= env.signers.length) {
             return res.status(400).json({ error: "Signer not found in envelope" });
@@ -724,11 +720,7 @@ eSignController.completeEnvelope = async (req, res) => {
             });
         }
 
-        let env = await Envelope.findOne({
-            _id: envelopeId,
-            "signers.email": signerEmail,
-        });
-
+        let env = await Envelope.findOne({ _id: envelopeId, "signers.email": signerEmail, });
         if (!env) {
             return res.status(404).json({ error: "Envelope not found" });
         }
@@ -771,9 +763,7 @@ eSignController.completeEnvelope = async (req, res) => {
             .filter((h) => h.trim().length > 0);
 
         if (htmlParts.length === 0) {
-            return res.status(400).json({
-                error: "No HTML content found in envelope files",
-            });
+            return res.status(400).json({ error: "No HTML content found in envelope files", });
         }
 
         // Build the full HTML for the PDF

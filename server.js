@@ -71,7 +71,7 @@ const BASE_URL = process.env.BASE_URL || `api.ttsign.co`;
 
 
 app.get("/", (req, res) => {
-    res.json({ message: `Welcome to e_sign api.` });
+    res.json({ message: `Welcome to ttSign api.` });
 });
 
 const { verifyApiKey } = require("./middleware/helper");

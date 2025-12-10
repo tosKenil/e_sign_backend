@@ -14,7 +14,7 @@ const sendWebhook = require("../services/sendWebhook");
 const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 
 helpers.verifyJWT = async (req, res, next) => {
-    const token = req.query.token;
+    const token = req.query.type;
     if (!token) return res.status(401).json({ error: "Missing token" });
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) return res.status(401).json({ error: "Invalid token" });
