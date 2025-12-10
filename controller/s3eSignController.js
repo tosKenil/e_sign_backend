@@ -12,6 +12,7 @@ const puppeteer_core = require("puppeteer-core");
 const { PDFDocument } = require("pdf-lib");
 
 const AwsFileUpload = require("../services/s3Upload"); // <-- change path as per your project
+const signatureModel = require("../model/signatureModel.js");
 
 const { JWT_SECRET, BASE_URL, SPACES_PUBLIC_URL } = process.env;
 
@@ -21,8 +22,6 @@ const ESIGN_PDF_PATH = ESIGN_PATHS.ESIGN_PDF_PATH;
 const ESIGN_SIGNED_PATH = ESIGN_PATHS.ESIGN_SIGNED_PATH;
 
 // eSignController.generate_template = async (req, res) => {
-//     console.log("🚀 ~ POST /api/generate-template (multi-html, multi-user, single PDF)");
-
 //     try {
 //         const { htmlTemplates, userData } = req.body;
 
@@ -230,8 +229,6 @@ const ESIGN_SIGNED_PATH = ESIGN_PATHS.ESIGN_SIGNED_PATH;
 //     }
 // };
 eSignController.generate_template = async (req, res) => {
-    console.log("🚀 ~ POST /api/generate-template (multi-html, multi-user, single PDF)");
-
     let browser;
     try {
         const { htmlTemplates, userData } = req.body;
@@ -444,13 +441,12 @@ eSignController.generate_template = async (req, res) => {
 };
 
 eSignController.readEnvelopeByToken = async (req, res) => {
-    console.log("/api/envelopes/by-token", req.query);
-
     try {
         const env = await Envelope.findById(req.envId);
         if (!env) {
             return res.status(404).json({ error: "Envelope not found" });
         }
+
 
         // find signer by index or email
         let idx =
@@ -491,6 +487,13 @@ eSignController.readEnvelopeByToken = async (req, res) => {
                 html: f.html || null,
             }));
 
+
+        const signature = await signatureModel.findOne({ email: req.signerEmail })
+        let signatureRawData = null;
+        if (signature) {
+            signatureRawData = signature?.signature;
+        }
+
         return res.json({
             status: true,
             message: "Envelope loaded successfully",
@@ -511,6 +514,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
                 mimetype: f.mimetype,
             })),
             htmlTemplates,
+            signatureRawData
         });
     } catch (err) {
         console.error(err);
@@ -521,8 +525,6 @@ eSignController.readEnvelopeByToken = async (req, res) => {
 // eSignController.completeEnvelope = async (req, res) => {
 //     let browser;
 //     try {
-//         console.log("POST /api/envelopes/complete", req.query);
-
 //         const { template, location } = req.body;
 //         const envelopeId = req.envId;
 //         const signerEmail = req.signerEmail;
@@ -706,9 +708,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
 eSignController.completeEnvelope = async (req, res) => {
     let browser;
     try {
-        console.log("POST /api/envelopes/complete", req.query);
-
-        const { template, location } = req.body;
+        const { template, location, signature } = req.body;
         const envelopeId = req.envId;
         const signerEmail = req.signerEmail;
 
@@ -742,6 +742,13 @@ eSignController.completeEnvelope = async (req, res) => {
             return res.status(400).json({
                 error: "This signer has already completed the document",
             });
+        }
+
+        const findSignature = await signatureModel.findOne({ email: signerEmail });
+        if (findSignature) {
+            await signatureModel.updateOne({ email: signerEmail }, { signature: signature });
+        } else {
+            await signatureModel.create({ email: signerEmail, signature: signature });
         }
 
         const existingFiles = Array.isArray(env.files) ? env.files : [];
@@ -899,7 +906,6 @@ eSignController.completeEnvelope = async (req, res) => {
 
 
 eSignController.cancelEnvelope = async (req, res) => {
-    console.log("/api/envelopes/:token/cancel");
     let env = await Envelope.findById(req.envId);
     if (!env) return res.status(404).json({ error: "Envelope not found" });
 
@@ -921,7 +927,6 @@ eSignController.cancelEnvelope = async (req, res) => {
 };
 
 eSignController.envelopeDetails = async (req, res) => {
-    console.log("/api/envelopes/envelopeDetails");
 
     const { envId } = req.body;
 
