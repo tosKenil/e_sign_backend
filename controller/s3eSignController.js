@@ -1039,8 +1039,8 @@ eSignController.envelopeDetails = async (req, res) => {
     let env = await Envelope.findById(envId);
     if (!env) return res.status(404).json({ error: "Envelope not found" });
 
-    env.pdf = `${SPACES_PUBLIC_URL}/storage/pdf/${env.pdf}`;
-    env.signedPdf = `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}`;
+    env.pdf = env.pdf ? `${SPACES_PUBLIC_URL}/storage/pdf/${env.pdf}` : null;
+    env.signedPdf = env.signedPdf ? `${SPACES_PUBLIC_URL}/storage/signed/${env.signedPdf}` : null;
 
     if (Array.isArray(env.signers)) {
         if (env.signers && Array.isArray(env.signers)) {
@@ -1054,9 +1054,9 @@ eSignController.envelopeDetails = async (req, res) => {
     if (Array.isArray(env.files)) {
         env.files = env.files.map((file) => ({
             ...file,
-            publicUrl: `${SPACES_PUBLIC_URL}/storage/originals/${file.publicUrl}`,
-            templatePdf: `${SPACES_PUBLIC_URL}/storage/pdf/${file.templatePdf}`,
-            signedTemplatePdf: `${SPACES_PUBLIC_URL}/storage/signed/${file.signedTemplatePdf}`,
+            publicUrl: file.publicUrl ? `${SPACES_PUBLIC_URL}/storage/originals/${file.publicUrl}` : null,
+            templatePdf: file.templatePdf ? `${SPACES_PUBLIC_URL}/storage/pdf/${file.templatePdf}` : null,
+            signedTemplatePdf: file.signedTemplatePdf ? `${SPACES_PUBLIC_URL}/storage/signed/${file.signedTemplatePdf}` : null,
         }));
     }
 
