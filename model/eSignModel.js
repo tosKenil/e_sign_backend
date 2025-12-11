@@ -7,6 +7,8 @@ const originalFileSchema = new mongoose.Schema(
         filename: String,
         storedName: String,
         publicUrl: String,
+        templatePdf: String,
+        signedTemplatePdf: String,
         mimetype: String,
         html: String, // ⭐ NEW: full HTML content
     }
