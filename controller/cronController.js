@@ -8,13 +8,30 @@ const backupDatabaseToLocal = async () => {
 
     const pad = (n) => (n < 10 ? '0' + n : '' + n);
     const now = new Date();
-    // New DB name for backup in local
-    const backupDbName = `ttSignBackup_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+
+    // ⬇️ DATE ONLY (no time)
+    const backupDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const backupDbName = `ttSignBackup_${backupDate}`;
 
     let remoteClient;
     let localClient;
 
     try {
+        // ---------- CONNECT TO LOCAL FIRST ----------
+        localClient = new MongoClient(LOCAL_DB_URL);
+        await localClient.connect();
+
+        const admin = localClient.db().admin();
+        const { databases } = await admin.listDatabases();
+
+        const alreadyExists = databases.some(
+            (db) => db.name === backupDbName
+        );
+
+        if (alreadyExists) {
+            return;
+        }
+
         // ---------- CONNECT TO REMOTE ----------
         remoteClient = new MongoClient(REMOTE_DB_URL);
         await remoteClient.connect();
@@ -26,59 +43,27 @@ const backupDatabaseToLocal = async () => {
 
         const remoteDb = remoteClient.db(remoteDbName);
 
-        // ---------- EXPORT DATA FROM REMOTE (IN MEMORY) ----------
+        // ---------- EXPORT ----------
         const collectionsInfo = await remoteDb.listCollections().toArray();
         const exportData = {};
 
-        for (const collectionInfo of collectionsInfo) {
-            const collectionName = collectionInfo.name;
-            const collection = remoteDb.collection(collectionName);
-
-            // Sample doc → simple schema (optional)
-            const sampleDocument = await collection.findOne();
-            const schema = {};
-            if (sampleDocument) {
-                for (const key in sampleDocument) {
-                    schema[key] = typeof sampleDocument[key];
-                }
-            }
-
-            // All docs
+        for (const { name } of collectionsInfo) {
+            const collection = remoteDb.collection(name);
             const data = await collection.find().toArray();
 
-            exportData[collectionName] = {
-                schema,
-                data,
-            };
-
+            exportData[name] = { data };
         }
 
-        // ---------- CONNECT TO LOCAL ----------
-        localClient = new MongoClient(LOCAL_DB_URL);
-        await localClient.connect();
-
+        // ---------- IMPORT ----------
         const localDb = localClient.db(backupDbName);
 
-        // ---------- IMPORT DATA TO LOCAL (DIRECT, NO FILE) ----------
         for (const collectionName in exportData) {
-            const collectionData = exportData[collectionName];
-            const collection = localDb.collection(collectionName);
-
-            // Drop if exists
-            const existingCollections = await localDb
-                .listCollections({ name: collectionName })
-                .toArray();
-
-            if (existingCollections.length > 0) {
-                await collection.drop();
-            }
-
-            // Recreate and insert
-            if (collectionData.data && collectionData.data.length > 0) {
-                await localDb.createCollection(collectionName);
-                await collection.insertMany(collectionData.data);
+            const docs = exportData[collectionName].data;
+            if (docs.length) {
+                await localDb.collection(collectionName).insertMany(docs);
             }
         }
+
 
     } catch (err) {
         console.error('❌ Error in backup job:', err);
