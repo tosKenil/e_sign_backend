@@ -6,7 +6,8 @@ mongoose.connect(process.env.DB_URL)
     .then(() => {
         console.log("✅ MongoDB connected")
 
-        cron.schedule('0 10 * * *', () => {
+        // cron.schedule('0 10 * * *', () => {
+        cron.schedule('30 6 * * *', () => {
             console.log('⏰ Cron triggered at:', new Date().toISOString());
             backupDatabaseToLocal();
         });
