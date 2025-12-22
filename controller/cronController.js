@@ -1,7 +1,7 @@
-require('dotenv').config();
+const cronController = {};
 const { MongoClient } = require('mongodb');
 
-const backupDatabaseToLocal = async () => {
+cronController.backupDatabaseToLocal = async () => {
     const REMOTE_DB_URL = process.env.DB_URL;
     const BACKUP_DB_URL = process.env.MONGO_BACKUP_URL;
 
@@ -74,4 +74,4 @@ const backupDatabaseToLocal = async () => {
     }
 };
 
-module.exports = backupDatabaseToLocal;
+module.exports = cronController;

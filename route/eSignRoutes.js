@@ -1,18 +1,24 @@
 const express = require("express");
 const route = express.Router();
-const s3eSignController = require("../controller/s3eSignController");
+const eSignController = require("../controller/eSignController.js");
+const cronController = require("../controller/cronController");
 const webhookController = require("../controller/webhookController");
 const verification = require("../middleware/helper.js");
 const path = require("path");
+const PDFeSignController = require("../controller/PDFeSignController.js");
 
 
-route.post("/generate-template", s3eSignController.generate_template);
-route.get("/envelopes/getFiles", verification.verifyJWT, s3eSignController.readEnvelopeByToken);
-route.post("/envelopes/complete", verification.verifyJWT, s3eSignController.completeEnvelope);
-route.post("/envelopes/cancel", verification.verifyJWT, s3eSignController.cancelEnvelope);
-route.post("/envelopeDetails", s3eSignController.envelopeDetails);
-route.post("/uploadImg", s3eSignController.uploadImg);
+route.post("/generate-template", eSignController.generate_template);
+route.get("/envelopes/getFiles", verification.verifyJWT, eSignController.readEnvelopeByToken);
+route.post("/envelopes/complete", verification.verifyJWT, eSignController.completeEnvelope);
+route.post("/envelopes/cancel", verification.verifyJWT, eSignController.cancelEnvelope);
+route.post("/envelopeDetails", eSignController.envelopeDetails);
+route.post("/uploadImg", eSignController.uploadImg);
 
 route.post("/webhookRegister", webhookController.registerWebhook);
+
+
+// for PDF
+route.post("/storePdf", PDFeSignController.storePdf);
 
 module.exports = route;
