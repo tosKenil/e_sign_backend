@@ -705,7 +705,7 @@ eSignController.resentEnvelope = async (req, res) => {
     res.json({
         status: true,
         message: "Envelope details fetched successfully",
-        envelopeId: env,
+        envelopeId: env?._id,
     });
 };
 
