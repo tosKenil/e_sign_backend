@@ -315,7 +315,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             // .filter((f) => f.mimetype == "text/html")
             .map((f) => ({
                 filename: f.filename,
-                url: `${SPACES_PUBLIC_URL}/storage/originals/${f.publicUrl}`, // Spaces URL
+                url: `${SPACES_PUBLIC_URL}/storage/pdf/${f.publicUrl}`, // Spaces URL
                 mimetype: f.mimetype,
                 html: f.html || null,
             }));
@@ -343,7 +343,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             },
             files: env.files.map((f) => ({
                 filename: f.filename,
-                url: `${SPACES_PUBLIC_URL}/storage/originals/${f.publicUrl}`, // Spaces URL
+                url: `${SPACES_PUBLIC_URL}/storage/pdf/${f.publicUrl}`, // Spaces URL
                 mimetype: f.mimetype,
             })),
             htmlTemplates,
@@ -702,10 +702,10 @@ eSignController.resentEnvelope = async (req, res) => {
         }
     }
 
-    res.json({
+    return res.json({
         status: true,
         message: "Envelope details fetched successfully",
-        envelopeId: env,
+        envelopeId: env?._id,
     });
 };
 

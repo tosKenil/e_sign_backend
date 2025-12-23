@@ -5,7 +5,7 @@ const sendMail = require("../services/sendmail.js");
 const { SIGN_EVENTS, DIRECTORIES, ESIGN_PATHS, userId, STATICUSERID } = require("../config/contance.js");
 const Envelope = require("../model/eSignModel");
 const jwt = require("jsonwebtoken");
-const { addHeaderToPdf, getCurrentDayInNumber, getCurrentMOnth, getCurrentYear,  triggerWebhookEvent, setEnvelopeData } = require("../middleware/helper");
+const { addHeaderToPdf, getCurrentDayInNumber, getCurrentMOnth, getCurrentYear, triggerWebhookEvent, setEnvelopeData } = require("../middleware/helper");
 const { PDFDocument } = require("pdf-lib");
 
 const AwsFileUpload = require("../services/s3Upload"); // <-- change path as per your project
@@ -19,33 +19,31 @@ const ESIGN_PDF_PATH = ESIGN_PATHS.ESIGN_PDF_PATH;
 const ESIGN_SIGNED_PATH = ESIGN_PATHS.ESIGN_SIGNED_PATH;
 
 PDFeSignController.storePdf = async (req, res) => {
-    let browser; // not used anymore, but kept if you want to remove safely
     try {
         const { base64, userData } = req.body;
 
-        // ------------------ Parse base64 PDFs ------------------
-        let pdfList = [];
+        // ------------------ Parse templates (array of objects) ------------------
+        let templates = [];
         try {
-            // base64 can be:
-            // - array of base64 strings
-            // - JSON string of array
-            // - single base64 string
-            if (Array.isArray(base64)) {
-                pdfList = base64;
-            } else if (typeof base64 === "string") {
-                const trimmed = base64.trim();
-                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-                    pdfList = JSON.parse(trimmed);
-                } else {
-                    pdfList = [trimmed];
-                }
-            }
-        } catch (err) {
-            return res.status(400).json({ error: "base64 must be a valid array of base64 PDFs" });
+            templates = Array.isArray(base64) ? base64 : JSON.parse(base64);
+        } catch {
+            return res.status(400).json({ error: "base64 must be a valid array" });
         }
 
-        if (!pdfList.length) {
-            return res.status(400).json({ error: "At least one PDF base64 is required" });
+        if (!templates.length) {
+            return res.status(400).json({ error: "At least one PDF template required in base64" });
+        }
+
+        // validate template items
+        templates = templates
+            .map((t, idx) => ({
+                name: (t?.name || `Document-${idx + 1}`).toString(),
+                documentBase64: (t?.documentBase64 || "").toString(),
+            }))
+            .filter((t) => !!t.documentBase64);
+
+        if (!templates.length) {
+            return res.status(400).json({ error: "base64 items must contain documentBase64" });
         }
 
         // ------------------ Parse user data ------------------
@@ -68,17 +66,17 @@ PDFeSignController.storePdf = async (req, res) => {
             return res.status(400).json({ error: "Invalid userData format" });
         }
 
-        // ------------------ Convert base64 -> buffers + upload per PDF ------------------
+        // ------------------ Convert base64 -> buffers + upload each PDF ------------------
         const files = [];
         const pdfBuffers = [];
 
-        for (let i = 0; i < pdfList.length; i++) {
-            const item = pdfList[i];
+        for (let i = 0; i < templates.length; i++) {
+            const { documentBase64, name } = templates[i];
 
             // accept:
             // - pure base64
             // - data:application/pdf;base64,...
-            const cleanBase64 = String(item || "")
+            const cleanBase64 = String(documentBase64 || "")
                 .replace(/^data:application\/pdf;base64,/i, "")
                 .trim();
 
@@ -115,15 +113,15 @@ PDFeSignController.storePdf = async (req, res) => {
                 mimetype: "application/pdf",
             });
 
+            // Store per-file meta
             files.push({
-                filename: `Document-${i + 1}`,
-                storedName: pdfFileName,
-                publicUrl: pdfFileName, // if you normally store key only
+                filename: name,               // 👈 document name from payload
+                storedName: pdfFileName,      // key/name stored in spaces
+                publicUrl: pdfFileName,       // if you store only key (frontend can build URL)
                 mimetype: "application/pdf",
-                html: "",
+                html: documentBase64,
 
-                // per-template fields (keep for compatibility)
-                templatePdf: pdfFileName,
+                templatePdf: pdfFileName,     // keep your existing schema compatibility
                 signedTemplatePdf: null,
             });
         }
@@ -153,7 +151,6 @@ PDFeSignController.storePdf = async (req, res) => {
             name: u.name,
             status: SIGN_EVENTS.SENT,
             sentAt: now,
-            signedUrl: "",
             tokenUrl: "",
         }));
 
@@ -161,16 +158,16 @@ PDFeSignController.storePdf = async (req, res) => {
             signers,
             files,
             documentStatus: SIGN_EVENTS.SENT,
-            pdf: mergedKey, // key/path for merged PDF (without header yet)
+            pdf: mergedKey, // merged pdf key (header will be applied after env._id created)
             signedPdf: "",
-            signedUrl: "",
             tokenUrl: "",
+            contentType: "application/pdf",
         });
 
         // ------------------ Add header with Envelope ID to every page ------------------
         const finalMergedBytes = await addHeaderToPdf(mergedPdfBytes, env._id);
 
-        // ------------------ Upload final merged PDF ------------------
+        // ------------------ Upload final merged PDF (with header) ------------------
         const mergedUploadResult = await AwsFileUpload.uploadToSpaces({
             fileData: finalMergedBytes,
             filename: mergedPdfFileName,
@@ -183,26 +180,19 @@ PDFeSignController.storePdf = async (req, res) => {
             mergedUploadResult?.Location ||
             `${ESIGN_PDF_PATH}/${mergedPdfFileName}`;
 
-        // if your schema supports pdfUrl
+        // if your schema supports it
         env.pdf = mergedKey;
-        env.pdfUrl = mergedPublicUrl; // only if field exists (otherwise remove)
+        env.pdfUrl = mergedPublicUrl; // remove if field doesn't exist
 
         // ------------------ Generate token URLs and save env ------------------
         const signerResults = [];
         for (let i = 0; i < env.signers.length; i++) {
             const s = env.signers[i];
-            const token = jwt.sign(
-                { envId: String(env._id), email: s.email, i },
-                JWT_SECRET
-            );
+            const token = jwt.sign({ envId: String(env._id), email: s.email, i }, JWT_SECRET);
             const signUrl = `${process.env.SIGNING_WEB_URL}?type=${token}`;
-            env.signers[i].tokenUrl = signUrl;
 
-            signerResults.push({
-                email: s.email,
-                name: s.name,
-                tokenUrl: signUrl,
-            });
+            env.signers[i].tokenUrl = signUrl;
+            signerResults.push({ email: s.email, name: s.name, tokenUrl: signUrl });
         }
 
         env.tokenUrl = signerResults[0]?.tokenUrl || "";
@@ -235,14 +225,15 @@ PDFeSignController.storePdf = async (req, res) => {
             status: true,
             message: "emails sent successfully",
             envelopeId: String(env._id),
-            // mergedPdfUrl: mergedPublicUrl, // enable if you want
             // files, // enable if you want
+            // mergedPdfUrl: mergedPublicUrl, // enable if you want
         });
     } catch (e) {
         console.error("🔥 Error in storePdf:", e);
         return res.status(500).json({ error: "Generation failed" });
     }
 };
+
 
 
 

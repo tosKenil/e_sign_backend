@@ -51,6 +51,7 @@ const envelopeSchema = new mongoose.Schema(
         pdf: { type: String, default: "" },
         signedPdf: { type: String, default: "" }, // final merged/fully-signed pdf (optional)
         signedUrl: { type: String, default: "" }, // convenience: first signer link
+        contentType: { type: String, default: null }
     },
     { collection: "envelope", timestamps: true }
 );
