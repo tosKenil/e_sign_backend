@@ -1,6 +1,6 @@
 const helpers = {}
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = process.env.JWT_SECRET;
+const { JWT_SECRET, API_KEY } = process.env;
 const fs = require("fs");
 const puppeteer = require("puppeteer");
 const chromium = require("@sparticuz/chromium");
@@ -31,16 +31,13 @@ helpers.verifyJWT = async (req, res, next) => {
 helpers.verifyApiKey = async (req, res, next) => {
     // Allow key via header (you used 'api-key')
     const headerKey = req.headers["api-key"];
-    const key = headerKey;
 
-    if (!API_KEY) {
+    if (!headerKey) {
         console.error("API_KEY not configured on server");
-        return res
-            .status(500)
-            .json({ error: "Server API key not configured" });
+        return res.status(500).json({ error: "Server API key not configured" });
     }
 
-    if (!key || key !== API_KEY) {
+    if (!headerKey || headerKey !== API_KEY) {
         return res.status(401).json({ error: "Invalid or missing API key" });
     }
 
