@@ -73,7 +73,6 @@ helpers.addHeaderToPdf = async (pdfBytes, envelopeId) => {
     return await pdfDoc.save();
 }
 
-
 helpers.generatePdfDocumentFromTemplate = async ({
     templatePath,
     outputName,
@@ -129,6 +128,46 @@ helpers.generatePdfDocumentFromTemplate = async ({
         file: fileBuffer,
     };
 };
+
+helpers.base64ToPdfBuffer = (b64) => {
+  if (!b64) return null;
+
+  const cleaned = String(b64)
+    .trim()
+    .replace(/^data:application\/pdf;base64,/, "")
+    .replace(/\s/g, "");
+
+  let buf;
+  try {
+    buf = Buffer.from(cleaned, "base64");
+  } catch (e) {
+    return null;
+  }
+
+  if (!buf || buf.length < 5) return null;
+
+  // Validate PDF header: %PDF-
+  const header = buf.subarray(0, 5).toString("utf8");
+  if (header !== "%PDF-") {
+    return null; // not a valid pdf binary
+  }
+
+  return buf;
+};
+
+helpers.mergePdfBuffers = async (buffers) => {
+  const mergedPdf = await PDFDocument.create();
+
+  for (const buf of buffers) {
+    const src = await PDFDocument.load(buf);
+    const pages = await mergedPdf.copyPages(src, src.getPageIndices());
+    pages.forEach((p) => mergedPdf.addPage(p));
+  }
+
+  const mergedBytes = await mergedPdf.save();
+  return Buffer.from(mergedBytes);
+};
+
 
 function extractHeadFragments(htmlStr = "") {
     const styles = [];

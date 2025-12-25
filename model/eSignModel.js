@@ -10,7 +10,8 @@ const originalFileSchema = new mongoose.Schema(
         templatePdf: String,
         signedTemplatePdf: String,
         mimetype: String,
-        html: String, // ⭐ NEW: full HTML content
+        html: String,
+        fileId: String,
     }
 );
 
@@ -25,6 +26,7 @@ const signerSchema = new mongoose.Schema(
             default: SIGN_EVENTS.PENDING,
         },
         location: { type: Object, default: {} },
+        metaData: [{ type: Object, default: {} }],
         sentAt: Date,
         deliveredAt: Date,
         completedAt: Date,

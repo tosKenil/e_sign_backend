@@ -50,11 +50,13 @@ app.use((err, req, res, next) => {
         "Unhandled error middleware caught:",
         err && err.stack ? err.stack : err
     );
-    const message =
-        err.message || (err.code ? String(err.code) : "Server error");
+    const message = err.message || (err.code ? String(err.code) : "Server error");
     res.status(500).json({ error: message });
 });
 
+app.use((req, res) => {
+    res.status(404).json({ success: false, message: 'Route not found' });
+});
 
 // -------------------- START --------------------
 app.listen(PORT, () =>

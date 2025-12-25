@@ -22,5 +22,7 @@ route.post("/webhookRegister", webhookController.registerWebhook);
 
 // for PDF
 route.post("/storePdf", PDFeSignController.storePdf);
+route.get("/readPdfbyToken", verification.verifyJWT, PDFeSignController.readPdfbyToken);
+route.post("/completePdf", verification.verifyJWT, PDFeSignController.completePdf);
 
 module.exports = route;

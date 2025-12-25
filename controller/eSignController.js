@@ -14,7 +14,7 @@ const { PDFDocument } = require("pdf-lib");
 const AwsFileUpload = require("../services/s3Upload"); // <-- change path as per your project
 const signatureModel = require("../model/signatureModel.js");
 
-const { JWT_SECRET, BASE_URL, SPACES_PUBLIC_URL } = process.env;
+const { JWT_SECRET, BASE_URL, SPACES_PUBLIC_URL, SIGNING_WEB_URL } = process.env;
 
 
 const ESIGN_ORIGINALS_PATH = ESIGN_PATHS.ESIGN_ORIGINALS_PATH;
@@ -227,7 +227,7 @@ eSignController.generate_template = async (req, res) => {
                 { envId: String(env._id), email: s.email, i },
                 JWT_SECRET
             );
-            const signUrl = `${process.env.SIGNING_WEB_URL}?type=${token}`;
+            const signUrl = `${SIGNING_WEB_URL}/documents?type=${token}`;
             env.signers[i].tokenUrl = signUrl;
 
             signerResults.push({
@@ -572,7 +572,9 @@ eSignController.completeEnvelope = async (req, res) => {
             env.files?.[0]?.storedName ||
             "Completed Document";
 
-        const completedUrl = `${SPACES_PUBLIC_URL}/storage/signed/${mergedOutputName}`;
+        // const completedUrl = `${SPACES_PUBLIC_URL}/storage/signed/${mergedOutputName}`;
+        const completedUrl = `${SIGNING_WEB_URL}/documents?type=${req.query.type}`;
+
 
         let emailHtml = completeEmailTemplate
             .replace(/{{completedUrl}}/g, completedUrl)
@@ -704,7 +706,7 @@ eSignController.resentEnvelope = async (req, res) => {
 
     return res.json({
         status: true,
-        message: "Envelope details fetched successfully",
+        message: "Envelope resent successfully",
         envelopeId: env?._id,
     });
 };
