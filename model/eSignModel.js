@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { SIGN_EVENTS } = require("../config/contance.js");
+const { SIGN_EVENTS, IS_ACTIVE_ENUM } = require("../config/contance.js");
 
 
 const originalFileSchema = new mongoose.Schema(
@@ -27,6 +27,8 @@ const signerSchema = new mongoose.Schema(
         },
         location: { type: Object, default: {} },
         metaData: [{ type: Object, default: {} }],
+        isAction: { type: String, default: IS_ACTIVE_ENUM.NEED_TO_SIGN, enum: [IS_ACTIVE_ENUM.NEED_TO_SIGN, IS_ACTIVE_ENUM.RECEIVE_COPY] },
+        routingOrder: { type: Number, default: 0 },
         sentAt: Date,
         deliveredAt: Date,
         completedAt: Date,
@@ -49,6 +51,7 @@ const envelopeSchema = new mongoose.Schema(
             ],
             default: SIGN_EVENTS.PENDING,
         },
+        isRoutingOrder: { type: Boolean, default: false },
         files: [originalFileSchema],
         pdf: { type: String, default: "" },
         signedPdf: { type: String, default: "" }, // final merged/fully-signed pdf (optional)

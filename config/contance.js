@@ -25,4 +25,9 @@ module.exports.WEBHOOK_EVENTS = {
     COMPLETED: "completed",
 }
 
+module.exports.IS_ACTIVE_ENUM = {
+    NEED_TO_SIGN: "need_to_sign",
+    RECEIVE_COPY: "receive_copy",
+}
+
 module.exports.STATICUSERID = "692ea3cd6f5ab96d0d8afd6e"

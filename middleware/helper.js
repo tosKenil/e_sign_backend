@@ -7,11 +7,13 @@ const chromium = require("@sparticuz/chromium");
 const puppeteer_core = require("puppeteer-core");
 const moment = require("moment");
 const webhookSubscriptionModel = require("../model/webhookSubscriptionModel");
-const { WEBHOOK_EVENTS } = require("../config/contance");
+const { WEBHOOK_EVENTS, SIGN_EVENTS, IS_ACTIVE_ENUM } = require("../config/contance");
 const webhookEventModel = require("../model/webhookEventModel");
 const { ObjectId } = require('mongodb');
 const sendWebhook = require("../services/sendWebhook");
 const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
+const path = require("path");
+const sendMail = require("../services/sendmail");
 
 helpers.verifyJWT = async (req, res, next) => {
     const token = req.query.type;
@@ -52,26 +54,30 @@ helpers.addHeaderToPdf = async (pdfBytes, envelopeId) => {
     const fontSize = 9;
 
     const headerText = `Envelope ID: ${String(envelopeId)}`;
+    const headerHeight = 22; // height of red background bar
 
     pages.forEach((page) => {
         const { width, height } = page.getSize();
-        const textWidth = font.widthOfTextAtSize(headerText, fontSize);
 
-        // left-aligned header, similar style to your sample PDF
-        const x = 20; // left margin
-        const y = height - fontSize - 10; // a bit below the top edge
+        page.drawRectangle({
+            x: 0,
+            y: height - headerHeight,
+            width: width,
+            height: headerHeight,
+            color: rgb(1, 1, 1), // red
+        });
 
         page.drawText(headerText, {
-            x,
-            y,
+            x: 20,
+            y: height - fontSize - 7,
             size: fontSize,
             font,
-            color: rgb(0, 0, 0),
+            color: rgb(0, 0, 0), // white text for contrast
         });
     });
 
     return await pdfDoc.save();
-}
+};
 
 helpers.generatePdfDocumentFromTemplate = async ({
     templatePath,
@@ -130,42 +136,61 @@ helpers.generatePdfDocumentFromTemplate = async ({
 };
 
 helpers.base64ToPdfBuffer = (b64) => {
-  if (!b64) return null;
+    if (!b64) return null;
 
-  const cleaned = String(b64)
-    .trim()
-    .replace(/^data:application\/pdf;base64,/, "")
-    .replace(/\s/g, "");
+    const cleaned = String(b64)
+        .trim()
+        .replace(/^data:application\/pdf;base64,/, "")
+        .replace(/\s/g, "");
 
-  let buf;
-  try {
-    buf = Buffer.from(cleaned, "base64");
-  } catch (e) {
-    return null;
-  }
+    let buf;
+    try {
+        buf = Buffer.from(cleaned, "base64");
+    } catch (e) {
+        return null;
+    }
 
-  if (!buf || buf.length < 5) return null;
+    if (!buf || buf.length < 5) return null;
 
-  // Validate PDF header: %PDF-
-  const header = buf.subarray(0, 5).toString("utf8");
-  if (header !== "%PDF-") {
-    return null; // not a valid pdf binary
-  }
+    // Validate PDF header: %PDF-
+    const header = buf.subarray(0, 5).toString("utf8");
+    if (header !== "%PDF-") {
+        return null; // not a valid pdf binary
+    }
 
-  return buf;
+    return buf;
+};// helpers/pdfUtils.js  or  helpers/index.js
+
+helpers.pdfBufferToBase64 = (buffer, withDataUri = false) => {
+    if (!buffer || !Buffer.isBuffer(buffer) || buffer.length === 0) {
+        return null;
+    }
+
+    // Optional strict validation
+    const header = buffer.subarray(0, 5).toString("utf8");
+    if (header !== "%PDF-") {
+        console.warn("pdfBufferToBase64: Buffer does not look like a valid PDF");
+        // return null;   ← uncomment if you want to be strict
+    }
+
+    const base64 = buffer.toString("base64");
+
+    return withDataUri
+        ? `data:application/pdf;base64,${base64}`
+        : base64;
 };
 
 helpers.mergePdfBuffers = async (buffers) => {
-  const mergedPdf = await PDFDocument.create();
+    const mergedPdf = await PDFDocument.create();
 
-  for (const buf of buffers) {
-    const src = await PDFDocument.load(buf);
-    const pages = await mergedPdf.copyPages(src, src.getPageIndices());
-    pages.forEach((p) => mergedPdf.addPage(p));
-  }
+    for (const buf of buffers) {
+        const src = await PDFDocument.load(buf);
+        const pages = await mergedPdf.copyPages(src, src.getPageIndices());
+        pages.forEach((p) => mergedPdf.addPage(p));
+    }
 
-  const mergedBytes = await mergedPdf.save();
-  return Buffer.from(mergedBytes);
+    const mergedBytes = await mergedPdf.save();
+    return Buffer.from(mergedBytes);
 };
 
 
@@ -277,6 +302,7 @@ helpers.buildFullPdfHtml = (pagesHtml = []) => {
 }
 
 
+// =================================for date (START)=============================
 helpers.getCurrentDayInNumber = () => {
     const currentDayOfMonth = moment().format('D');
     return currentDayOfMonth; // All keys are valid
@@ -289,7 +315,121 @@ helpers.getCurrentYear = () => {
     const currentYear = moment().format('YYYY');
     return currentYear; // All keys are valid
 };
+// =================================for date  (END)=============================
 
+
+// =================================for routing Order  (START)=============================
+
+// helpers.getMinRoutingOrderPending = (env) => {
+//     const candidates = env.signers.filter(
+//         (s) => s.isAction === "need_to_sign" && s.status === SIGN_EVENTS.PENDING
+//     );
+//     if (!candidates.length) return null;
+//     return Math.min(...candidates.map((s) => +s.routingOrder || 0));
+// };
+
+// helpers.getIndexesByRoutingOrderPending = (env, routingOrder) => {
+//     const idxs = [];
+//     env.signers.forEach((s, idx) => {
+//         if (
+//             s.isAction === "need_to_sign" &&
+//             s.status === SIGN_EVENTS.PENDING &&
+//             (+s.routingOrder || 0) === (+routingOrder || 0)
+//         ) {
+//             idxs.push(idx);
+//         }
+//     });
+//     return idxs;
+// };
+
+helpers.allNeedToSignCompleted = (env) => {
+    return env.signers
+        .filter((s) => s.isAction === IS_ACTIVE_ENUM.NEED_TO_SIGN)
+        .every((s) => s.status === SIGN_EVENTS.COMPLETED);
+};
+
+// Send signing emails to a set of signer indexes, mark SENT
+// helpers.emailSignerIndexesAndMarkSent = async ({ env, signerIndexes, files }) => {
+//     if (!signerIndexes?.length) return [];
+
+//     const templatePath = path.join(__dirname, "../public/template/sendDocument.html");
+//     const emailTemplateRaw = fs.readFileSync(templatePath, "utf8");
+
+//     const firstFile = files?.[0];
+//     const docName = firstFile?.filename || "Document";
+
+//     const now = new Date();
+
+//     // mark as SENT before email (avoid double send if process crashes mid-way)
+//     signerIndexes.forEach((idx) => {
+//         env.signers[idx].status = SIGN_EVENTS.SENT;
+//         env.signers[idx].sentAt = now;
+//     });
+//     await env.save();
+
+//     await Promise.all(
+//         signerIndexes.map(async (idx) => {
+//             const s = env.signers[idx];
+//             const emailHtml = emailTemplateRaw
+//                 .replace(/{{name}}/g, s.name || "")
+//                 .replace(/{{signUrl}}/g, s.tokenUrl || "")
+//                 .replace(/{{DocumentName}}/g, docName);
+
+//             await sendMail(s.email, "Please sign the documents", emailHtml);
+//         })
+//     );
+
+//     return signerIndexes.map((idx) => env.signers[idx]?.email);
+// };
+
+// Send completed/copy email to receive_copy people, mark COMPLETED
+// helpers.emailReceiveCopyAndMarkCompleted = async ({ env, signedPdfUrl }) => {
+//     const receivers = env.signers
+//         .map((s, idx) => ({ s, idx }))
+//         .filter(({ s }) => s.isAction === "receive_copy");
+
+//     if (!receivers.length) return [];
+
+//     // if you have a template for completed mail, use it.
+//     // otherwise simple html.
+//     let htmlTemplate = "";
+//     try {
+//         const p = path.join(__dirname, "../public/template/receiveCopy.html");
+//         htmlTemplate = fs.readFileSync(p, "utf8");
+//     } catch {
+//         htmlTemplate = `
+//       <div>
+//         <p>Hi {{name}},</p>
+//         <p>The envelope has been completed. You can download the signed document here:</p>
+//         <p><a href="{{downloadUrl}}">Download Signed PDF</a></p>
+//       </div>
+//     `;
+//     }
+
+//     const now = new Date();
+
+//     receivers.forEach(({ idx }) => {
+//         env.signers[idx].status = SIGN_EVENTS.COMPLETED;
+//         env.signers[idx].completedAt = now;
+//     });
+
+//     await env.save();
+
+//     await Promise.all(
+//         receivers.map(async ({ s }) => {
+//             const html = htmlTemplate
+//                 .replace(/{{name}}/g, s.name || "")
+//                 .replace(/{{downloadUrl}}/g, signedPdfUrl || "");
+
+//             await sendMail(s.email, "Completed document copy", html);
+//         })
+//     );
+
+//     return receivers.map(({ s }) => s.email);
+// };
+
+
+// =================================for routing Order  (END)=============================
 
 
 helpers.normalizeIP = (req) => {
