@@ -664,7 +664,7 @@ eSignController.envelopeDetails = async (req, res) => {
         }));
     }
 
-    env.updatedAt = env?.documentStatus == SIGN_EVENTS.COMPLETED ? env.updatedAt : null;
+    env._doc.completedAt = env?.documentStatus == SIGN_EVENTS.COMPLETED ? env.updatedAt : null;
 
     res.json({
         status: true,
