@@ -15,7 +15,7 @@ const sendWebhook = async (event) => {
         try {
             await axios.post(subscription.url, event, {
                 headers: { "Content-Type": "application/json" },
-                timeout: 20000,
+                timeout: 60000,
             }
             );
         } catch (error) {
