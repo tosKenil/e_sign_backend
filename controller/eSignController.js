@@ -583,7 +583,7 @@ eSignController.completeEnvelope = async (req, res) => {
 
         await sendMail(env.signers[idx].email, subject, emailHtml);
 
-        global.io.to(envelopeId.toString()).emit('reloadPage', { resData: "reloadPage" });
+        // global.io.to(envelopeId.toString()).emit('reloadPage', { resData: "reloadPage" });
 
         return res.json({
             status: true,

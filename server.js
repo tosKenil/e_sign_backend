@@ -30,39 +30,31 @@ const BASE_URL = process.env.BASE_URL || `api.ttsign.co`;
 
 
 // ========================================for socket io
-const server = require("http").createServer(app);
+// const server = require("http").createServer(app);
 // const io = require("socket.io")(server)
-const { Server } = require("socket.io");
-const io = new Server(server, {
-    transports: ["polling"],
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
-global.io = io;
+// global.io = io;
 
-io.on('connection', (socket) => {
-    console.log("socket connected");
-    socket.on('socketJoin', (envId) => {
-        if (!socket.rooms.has(envId.toString())) {
-            console.log('roomJoin-->>>', envId);
-            socket.join(envId.toString());
-        }
-    });
+// io.on('connection', (socket) => {
+//     console.log("socket connected");
+//     socket.on('socketJoin', (envId) => {
+//         if (!socket.rooms.has(envId.toString())) {
+//             console.log('roomJoin-->>>', envId);
+//             socket.join(envId.toString());
+//         }
+//     });
 
-    socket.on('socketLeave', (envId) => {
-        if (socket.rooms.has(envId.toString())) {
-            console.log('roomLeave-->>>', envId);
-            socket.leave(envId.toString());
-        }
-    });
+//     socket.on('socketLeave', (envId) => {
+//         if (socket.rooms.has(envId.toString())) {
+//             console.log('roomLeave-->>>', envId);
+//             socket.leave(envId.toString());
+//         }
+//     });
 
-    socket.on('disconnect', () => {
-        console.log("socket disconnected");
-    })
+//     socket.on('disconnect', () => {
+//         console.log("socket disconnected");
+//     })
 
-});
+// });
 // ========================================for socket io
 
 app.get("/", (req, res) => {
@@ -96,6 +88,6 @@ app.use((req, res) => {
 });
 
 // -------------------- START --------------------
-server.listen(PORT, () =>
+app.listen(PORT, () =>
     console.log(`🚀 Server running at ${BASE_URL} (API key protected)`)
 );
