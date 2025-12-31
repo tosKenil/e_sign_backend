@@ -31,7 +31,15 @@ const BASE_URL = process.env.BASE_URL || `api.ttsign.co`;
 
 // ========================================for socket io
 const server = require("http").createServer(app);
-const io = require("socket.io")(server)
+// const io = require("socket.io")(server)
+const { Server } = require("socket.io");
+const io = new Server(server, {
+    transports: ["polling"],
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 global.io = io;
 
 io.on('connection', (socket) => {
