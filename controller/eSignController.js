@@ -572,7 +572,6 @@ eSignController.completeEnvelope = async (req, res) => {
             env.files?.[0]?.storedName ||
             "Completed Document";
 
-        // const completedUrl = `${SPACES_PUBLIC_URL}/storage/signed/${mergedOutputName}`;
         const completedUrl = `${SIGNING_WEB_URL}/documents?type=${req.query.type}`;
 
 
@@ -583,6 +582,8 @@ eSignController.completeEnvelope = async (req, res) => {
         const subject = "Tianlong Document Completed: Review The Document";
 
         await sendMail(env.signers[idx].email, subject, emailHtml);
+
+        global.io.to(envelopeId.toString()).emit('reloadPage', { resData: "reloadPage" });
 
         return res.json({
             status: true,

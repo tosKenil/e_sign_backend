@@ -28,6 +28,35 @@ app.use(fileUpload())
 const PORT = process.env.PORT || 4013;
 const BASE_URL = process.env.BASE_URL || `api.ttsign.co`;
 
+
+// ========================================for socket io
+const server = require("http").createServer(app);
+const io = require("socket.io")(server)
+global.io = io;
+
+io.on('connection', (socket) => {
+    console.log("socket connected");
+    socket.on('socketJoin', (envId) => {
+        if (!socket.rooms.has(envId.toString())) {
+            console.log('roomJoin-->>>', envId);
+            socket.join(envId.toString());
+        }
+    });
+
+    socket.on('socketLeave', (envId) => {
+        if (socket.rooms.has(envId.toString())) {
+            console.log('roomLeave-->>>', envId);
+            socket.leave(envId.toString());
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log("socket disconnected");
+    })
+
+});
+// ========================================for socket io
+
 app.get("/", (req, res) => {
     res.json({ message: `Welcome to ttSign api.` });
 });
@@ -59,6 +88,6 @@ app.use((req, res) => {
 });
 
 // -------------------- START --------------------
-app.listen(PORT, () =>
+server.listen(PORT, () =>
     console.log(`🚀 Server running at ${BASE_URL} (API key protected)`)
 );
