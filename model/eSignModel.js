@@ -27,7 +27,7 @@ const signerSchema = new mongoose.Schema(
         },
         location: { type: Object, default: {} },
         metaData: [{ type: Object, default: {} }],
-        isAction: { type: String, default: IS_ACTIVE_ENUM.NEED_TO_SIGN, enum: [IS_ACTIVE_ENUM.NEED_TO_SIGN, IS_ACTIVE_ENUM.RECEIVE_COPY] },
+        isAction: { type: String, default: IS_ACTIVE_ENUM.NEED_TO_SIGN, enum: [IS_ACTIVE_ENUM.NEED_TO_SIGN, IS_ACTIVE_ENUM.RECEIVE_COPY, IS_ACTIVE_ENUM.NEED_TO_VIEW] },
         routingOrder: { type: Number, default: 0 },
         sentAt: Date,
         deliveredAt: Date,

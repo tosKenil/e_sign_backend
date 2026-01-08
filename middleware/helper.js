@@ -307,7 +307,7 @@ helpers.getCurrentDayInNumber = () => {
     const currentDayOfMonth = moment().format('D');
     return currentDayOfMonth; // All keys are valid
 };
-helpers.getCurrentMOnth = () => {
+helpers.getCurrentMonth = () => {
     const currentMonth = moment().format('M');
     return currentMonth; // All keys are valid
 };

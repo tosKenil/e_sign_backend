@@ -26,7 +26,8 @@ module.exports.WEBHOOK_EVENTS = {
 }
 
 module.exports.IS_ACTIVE_ENUM = {
-    NEED_TO_SIGN: "need_to_sign",
+    NEED_TO_SIGN: "needs_to_sign",
+    NEED_TO_VIEW: "need_to_view",
     RECEIVE_COPY: "receive_copy",
 }
 

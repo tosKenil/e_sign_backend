@@ -5,7 +5,7 @@ const sendMail = require("../services/sendmail.js");
 const { SIGN_EVENTS, DIRECTORIES, ESIGN_PATHS, userId, STATICUSERID } = require("../config/contance.js");
 const Envelope = require("../model/eSignModel");
 const jwt = require("jsonwebtoken");
-const { generatePdfDocumentFromTemplate, addHeaderToPdf, buildFullPdfHtml, getCurrentDayInNumber, getCurrentMOnth, getCurrentYear, normalizeIP, triggerWebhookEvent, setEnvelopeData } = require("../middleware/helper");
+const { generatePdfDocumentFromTemplate, addHeaderToPdf, buildFullPdfHtml, getCurrentDayInNumber, getCurrentMonth, getCurrentYear, normalizeIP, triggerWebhookEvent, setEnvelopeData } = require("../middleware/helper");
 const { default: puppeteer } = require("puppeteer");
 const chromium = require("@sparticuz/chromium");
 const puppeteer_core = require("puppeteer-core");
@@ -95,7 +95,7 @@ eSignController.generate_template = async (req, res) => {
                         ? templateItem.name
                         : `Document-${i + 1}`;
 
-                const baseName = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}_${Date.now()}-template-${i + 1}`;
+                const baseName = `${getCurrentDayInNumber()}-${getCurrentMonth()}-${getCurrentYear()}_${Date.now()}-template-${i + 1}`;
 
                 const htmlFileName = `${baseName}.html`;
                 const pdfFileName = `${baseName}.pdf`;
@@ -174,7 +174,7 @@ eSignController.generate_template = async (req, res) => {
         }
 
         const mergedPdfBytes = await mergedPdf.save();
-        const mergedBaseName = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}_${Date.now()}-merged`;
+        const mergedBaseName = `${getCurrentDayInNumber()}-${getCurrentMonth()}-${getCurrentYear()}_${Date.now()}-merged`;
         const mergedPdfFileName = `${mergedBaseName}.pdf`;
         const mergedKey = mergedPdfFileName;
 
@@ -461,7 +461,7 @@ eSignController.completeEnvelope = async (req, res) => {
             });
         }
 
-        const datePart = `${getCurrentDayInNumber()}-${getCurrentMOnth()}-${getCurrentYear()}`;
+        const datePart = `${getCurrentDayInNumber()}-${getCurrentMonth()}-${getCurrentYear()}`;
 
         // --------------- PER-TEMPLATE SIGNED PDF (signedTemplatePdf) ---------------
         for (let i = 0; i < env.files.length; i++) {
