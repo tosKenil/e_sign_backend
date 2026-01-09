@@ -315,7 +315,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             // .filter((f) => f.mimetype == "text/html")
             .map((f) => ({
                 filename: f.filename,
-                signedTemplatePdf: `${SPACES_PUBLIC_URL}/storage/signed/${f.signedTemplatePdf}`,
+                signedTemplatePdf: f.signedTemplatePdf == null ? `${SPACES_PUBLIC_URL}/storage/pdf/${f.templatePdf}` : `${SPACES_PUBLIC_URL}/storage/signed/${f.signedTemplatePdf}`,
                 mimetype: f.mimetype,
                 html: f.html || null,
             }));
@@ -343,7 +343,7 @@ eSignController.readEnvelopeByToken = async (req, res) => {
             },
             files: env.files.map((f) => ({
                 filename: f.filename,
-                signedTemplatePdf: `${SPACES_PUBLIC_URL}/storage/signed/${f.signedTemplatePdf}`,
+                signedTemplatePdf: f.signedTemplatePdf == null ? `${SPACES_PUBLIC_URL}/storage/pdf/${f.templatePdf}` : `${SPACES_PUBLIC_URL}/storage/signed/${f.signedTemplatePdf}`,
                 mimetype: f.mimetype,
             })),
             htmlTemplates,
