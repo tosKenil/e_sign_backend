@@ -50,7 +50,7 @@ PDFeSignController.storePdf = async (req, res) => {
     users = users
       .map(u => ({
         name: String(u?.name || "").trim(),
-        email: String(u?.email || "").trim().toLowerCase(),
+        email: String(u?.email || "").trim(),
         tabs: Array.isArray(u?.tabs) ? u.tabs : [],
         isAction: u?.isAction || IS_ACTIVE_ENUM.NEED_TO_SIGN,
         routingOrder: Number(u?.routingOrder) || 0,

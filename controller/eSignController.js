@@ -53,7 +53,7 @@ eSignController.generate_template = async (req, res) => {
         users = users
             .map((u) => ({
                 name: u.name?.trim(),
-                email: u.email?.trim()?.toLowerCase(),
+                email: u.email?.trim(),
             }))
             .filter((u) => u.email && emailRegex.test(u.email));
 
