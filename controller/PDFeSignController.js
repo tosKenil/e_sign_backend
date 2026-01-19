@@ -733,7 +733,7 @@ PDFeSignController.completePdf = async (req, res) => {
       const receiveCopies = env.signers
         .map((s, i) => ({ s, i }))
         // .filter(({ s }) => (s.isAction || "") === "receive_copy");
-        .filter(({ s }) => (s.isAction || "") === IS_ACTIVE_ENUM.NEED_TO_VIEW || IS_ACTIVE_ENUM.RECEIVE_COPY);
+        .filter(({ s }) => (s.isAction === IS_ACTIVE_ENUM.NEED_TO_VIEW || s.isAction === IS_ACTIVE_ENUM.RECEIVE_COPY) && s.status !== SIGN_EVENTS.COMPLETED);
 
 
       if (receiveCopies.length) {
