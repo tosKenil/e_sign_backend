@@ -700,6 +700,17 @@ eSignController.resentEnvelope = async (req, res) => {
                 .replace(/{{DocumentName}}/g, docName);
 
             const subject = "Please sign the document";
+            await Envelope.updateOne(
+                { _id: env._id, "signers.email": signer.email },
+                { $set: { "signers.$.sentAt": new Date(), "signers.$.status": SIGN_EVENTS.SENT } }
+            );
+
+            // also check and update documentStatus if needed
+            if (env.documentStatus !== SIGN_EVENTS.SENT) {
+                env.documentStatus = SIGN_EVENTS.SENT;
+                await env.save();
+            }
+
 
             await sendMail(signer.email, subject, emailHtml);
             mailSentCount++;
