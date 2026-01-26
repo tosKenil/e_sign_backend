@@ -1,77 +1,113 @@
-const cronController = {};
-const { MongoClient } = require('mongodb');
+const { MongoClient } = require("mongodb");
 
-cronController.backupDatabaseToLocal = async () => {
-    const REMOTE_DB_URL = process.env.DB_URL;
-    const BACKUP_DB_URL = process.env.MONGO_BACKUP_URL;
 
-    const pad = (n) => (n < 10 ? '0' + n : '' + n);
-    const now = new Date();
+function getTodayDate() {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+}
 
-    const dateSuffix = `${pad(now.getDate())}-${pad(
-        now.getMonth() + 1
-    )}-${now.getFullYear()}`;
+function extractDbNameFromUri(uri) {
+    const url = new URL(uri);
+    return url.pathname.replace("/", "") || null;
+}
 
-    let remoteClient;
-    let backupClient;
+
+const backupDatabaseToLocal = async () => {
+    let sourceUri = process.env.DB_URL;
+    let targetUri = process.env.MONGO_BACKUP_URL || "mongodb://localhost:27017/";
+
+    const sourceClient = new MongoClient(sourceUri);
+    const targetClient = new MongoClient(targetUri);
 
     try {
-        // ---------- CONNECT REMOTE ----------
-        remoteClient = new MongoClient(REMOTE_DB_URL);
-        await remoteClient.connect();
+        await sourceClient.connect();
+        await targetClient.connect();
 
-        const remoteDbName = new URL(REMOTE_DB_URL).pathname.replace(/^\//, '');
-        const backupDbName = `${remoteDbName}_${dateSuffix}`;
-
-        const remoteDb = remoteClient.db(remoteDbName);
-
-        // ---------- CONNECT BACKUP ----------
-        backupClient = new MongoClient(BACKUP_DB_URL);
-        await backupClient.connect();
-
-        const backupDb = backupClient.db(backupDbName);
-
-        const collections = await remoteDb
-            .listCollections({}, { nameOnly: false })
-            .toArray();
-
-        for (const col of collections) {
-            if (col.type !== 'collection') continue;
-
-            // 🔒 CHECK IF COLLECTION ALREADY EXISTS IN BACKUP DB
-            const exists = await backupDb
-                .listCollections({ name: col.name })
-                .hasNext();
-
-            if (exists) {
-                console.log(`⏭️ Skipping existing collection: ${col.name}`);
-                continue;
-            }
-
-            const sourceCol = remoteDb.collection(col.name);
-            const targetCol = backupDb.collection(col.name);
-
-            // ✅ Create empty collection explicitly
-            await targetCol.insertOne({ __init: true });
-            await targetCol.deleteMany({ __init: true });
-
-            const docs = await sourceCol.find().toArray();
-
-            if (docs.length) {
-                await targetCol.insertMany(docs);
-            }
-
-            console.log(`✅ Backed up collection: ${col.name}`);
+        // 4️⃣ auto-detect source DB name
+        const sourceDBName = extractDbNameFromUri(sourceUri);
+        if (!sourceDBName) {
+            throw new Error("Source DB name not found in URI");
         }
 
-        console.log(`🎉 Backup completed: ${backupDbName}`);
+        // 1️⃣ auto-generate backup DB name
+        const today = getTodayDate();
+        const backupDBName = `${sourceDBName}_backup_${today}`;
 
+        const targetAdmin = targetClient.db().admin();
+        const existingDbs = await targetAdmin.listDatabases();
+
+        // 2️⃣ if backup DB already exists → return
+        const alreadyExists = existingDbs.databases.some(
+            (db) => db.name === backupDBName
+        );
+
+        if (alreadyExists) {
+            console.log(`⚠️ Backup DB already exists: ${backupDBName}`);
+            return;
+        }
+
+        console.log(`📦 Creating backup DB: ${backupDBName}`);
+
+        const sourceDb = sourceClient.db(sourceDBName);
+        const targetDb = targetClient.db(backupDBName);
+
+        const collections = await sourceDb.listCollections().toArray();
+
+        console.log(`📚 Found ${collections.length} collections`);
+
+        for (const col of collections) {
+            const name = col.name;
+
+            console.log(`➡️ Processing collection: ${name}`);
+
+            const sourceCol = sourceDb.collection(name);
+            const targetCol = targetDb.collection(name);
+
+            await targetDb.createCollection(name);
+
+            const cursor = sourceCol.find({});
+            const batchSize = 1000;
+            let batch = [];
+
+            for await (const doc of cursor) {
+                batch.push(doc);
+
+                if (batch.length === batchSize) {
+                    await targetCol.insertMany(batch);
+                    batch = [];
+                }
+            }
+
+            if (batch.length > 0) {
+                await targetCol.insertMany(batch);
+            }
+
+            const indexes = await sourceCol.indexes();
+
+            for (const index of indexes) {
+                if (index.name === "_id_") continue;
+
+                const { key, name: idxName, ...options } = index;
+                await targetCol.createIndex(key, {
+                    name: idxName,
+                    ...options,
+                });
+            }
+
+            console.log(`✅ Completed: ${name}`);
+        }
+
+        console.log("🎉 Backup completed successfully");
     } catch (err) {
-        console.error('❌ Backup failed:', err);
+        console.error("❌ Backup failed:", err);
     } finally {
-        if (remoteClient) await remoteClient.close();
-        if (backupClient) await backupClient.close();
+        await sourceClient.close();
+        await targetClient.close();
     }
-};
+}
 
-module.exports = cronController;
+
+module.exports = { backupDatabaseToLocal }

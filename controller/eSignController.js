@@ -117,7 +117,7 @@ eSignController.generate_template = async (req, res) => {
                 // 2) Render HTML to PDF
                 const page = await browser.newPage();
                 await page.setViewport({ width: 1024, height: 768 });
-                await page.setContent(rawHtml, { waitUntil: "networkidle0" });
+                await page.setContent(rawHtml, { waitUntil: "networkidle0", timeout: 60000 });
 
                 const pdfBuffer = await page.pdf({
                     format: "A4",

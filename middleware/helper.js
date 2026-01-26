@@ -54,25 +54,32 @@ helpers.addHeaderToPdf = async (pdfBytes, envelopeId) => {
     const fontSize = 9;
 
     const headerText = `Envelope ID: ${String(envelopeId)}`;
-    const headerHeight = 22; // height of red background bar
+    const headerHeight = 22;
+    const paddingX = 12;
+
+    // ✅ calculate text width dynamically
+    const textWidth = font.widthOfTextAtSize(headerText, fontSize);
+    const headerWidth = textWidth + paddingX * 2;
 
     pages.forEach((page) => {
-        const { width, height } = page.getSize();
+        const { height } = page.getSize();
 
+        // Header background (dynamic width)
         page.drawRectangle({
             x: 0,
             y: height - headerHeight,
-            width: width,
+            width: headerWidth,
             height: headerHeight,
-            color: rgb(1, 1, 1), // red
+            color: rgb(1, 1, 1),
         });
 
+        // Header text
         page.drawText(headerText, {
-            x: 20,
-            y: height - fontSize - 7,
+            x: paddingX,
+            y: height - (headerHeight / 2) - (fontSize / 2) + 1,
             size: fontSize,
             font,
-            color: rgb(0, 0, 0), // white text for contrast
+            color: rgb(0, 0, 0),
         });
     });
 
